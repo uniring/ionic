@@ -94,6 +94,7 @@ angular.module('ionic.ui.virt', [])
 
           // Grab the bounds of the viewport
           var bounds = virtualList.listView.getViewportBounds(collection);
+          console.dir(bounds);
 
           // If we don't have a last start or end, store that
           if(typeof activeCollection === 'undefined') {
@@ -123,8 +124,10 @@ angular.module('ionic.ui.virt', [])
             // If we've scrolled further down the list, we need to
             // remove items above
             var numToRemove = bounds.first - lastStart;
-            console.log('Removing', numToRemove, 'items FROM BEGIN');
-            destroyItems(activeCollection, 'shift', numToRemove);
+            if(numToRemove > 0) {
+              console.log('Removing', numToRemove, 'items FROM BEGIN');
+              destroyItems(activeCollection, 'shift', numToRemove);
+            }
           } else if(delta) {
             // If we've scrolled further up the list, we need to
             // add items above

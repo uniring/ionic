@@ -1233,6 +1233,7 @@ angular.module('ionic.ui.virt', [])
 
           // Grab the bounds of the viewport
           var bounds = virtualList.listView.getViewportBounds(collection);
+          console.dir(bounds);
 
           // If we don't have a last start or end, store that
           if(typeof activeCollection === 'undefined') {
@@ -1262,8 +1263,10 @@ angular.module('ionic.ui.virt', [])
             // If we've scrolled further down the list, we need to
             // remove items above
             var numToRemove = bounds.first - lastStart;
-            console.log('Removing', numToRemove, 'items FROM BEGIN');
-            destroyItems(activeCollection, 'shift', numToRemove);
+            if(numToRemove > 0) {
+              console.log('Removing', numToRemove, 'items FROM BEGIN');
+              destroyItems(activeCollection, 'shift', numToRemove);
+            }
           } else if(delta) {
             // If we've scrolled further up the list, we need to
             // add items above
@@ -1330,483 +1333,318 @@ angular.module('ionic.ui.virt', [])
 })(ionic);
 
 ;
-(function() {
-'use strict';
-var uid               = ['0', '0', '0'];
+// © Copyright 2013 Paul Thomas <paul@stackfull.com>.  All Rights Reserved.
 
-/**
- * throw error if the name given is hasOwnProperty
- * @param  {String} name    the name to test
- * @param  {String} context the context in which the name is used, such as module or directive
- */
-function assertNotHasOwnProperty(name, context) {
-  if (name === 'hasOwnProperty') {
-    throw ngMinErr('badname', "hasOwnProperty is not a valid {0} name", context);
-  }
-}
+// sf-virtual-repeat directive
+// ===========================
+// Like `ng-repeat` with reduced rendering and binding
+//
+(function(ionic){
+  'use strict';
+  // (part of the sf.virtualScroll module).
+  var mod = angular.module('ionic.ui.virtRepeat', []);
 
-/**
- * A consistent way of creating unique IDs in angular. The ID is a sequence of alpha numeric
- * characters such as '012ABC'. The reason why we are not using simply a number counter is that
- * the number string gets longer over time, and it can also overflow, where as the nextId
- * will grow much slower, it is a string, and it will never overflow.
- *
- * @returns an unique alpha-numeric string
- */
-function nextUid() {
-  var index = uid.length;
-  var digit;
+  var DONT_WORK_AS_VIEWPORTS = ['TABLE', 'TBODY', 'THEAD', 'TR', 'TFOOT'];
+  var DONT_WORK_AS_CONTENT = ['TABLE', 'TBODY', 'THEAD', 'TR', 'TFOOT'];
+  var DONT_SET_DISPLAY_BLOCK = ['TABLE', 'TBODY', 'THEAD', 'TR', 'TFOOT'];
 
-  while(index) {
-    index--;
-    digit = uid[index].charCodeAt(0);
-    if (digit == 57 /*'9'*/) {
-      uid[index] = 'A';
-      return uid.join('');
+  // Utility to clip to range
+  function clip(value, min, max){
+    if( angular.isArray(value) ){
+      return angular.forEach(value, function(v){
+        return clip(v, min, max);
+      });
     }
-    if (digit == 90  /*'Z'*/) {
-      uid[index] = '0';
-    } else {
-      uid[index] = String.fromCharCode(digit + 1);
-      return uid.join('');
-    }
-  }
-  uid.unshift('0');
-  return uid.join('');
-}
-
-/**
- * @ngdoc function
- * @name angular.isString
- * @function
- *
- * @description
- * Determines if a reference is a `String`.
- *
- * @param {*} value Reference to check.
- * @returns {boolean} True if `value` is a `String`.
- */
-function isString(value){return typeof value == 'string';}
-
-/**
- * Checks if `obj` is a window object.
- *
- * @private
- * @param {*} obj Object to check
- * @returns {boolean} True if `obj` is a window obj.
- */
-function isWindow(obj) {
-  return obj && obj.document && obj.location && obj.alert && obj.setInterval;
-}
-
-/**
- * @private
- * @param {*} obj
- * @return {boolean} Returns true if `obj` is an array or array-like object (NodeList, Arguments,
- *                   String ...)
- */
-function isArrayLike(obj) {
-  if (obj == null || isWindow(obj)) {
-    return false;
+    return Math.max(min, Math.min(value, max));
   }
 
-  var length = obj.length;
+  mod.directive('sfVirtualRepeat', ['$log', '$rootElement', function($log, $rootElement){
 
-  if (obj.nodeType === 1 && length) {
-    return true;
-  }
+    return {
+      require: '?ngModel',
+      transclude: 'element',
+      priority: 1000,
+      terminal: true,
+      compile: sfVirtualRepeatCompile
+    };
 
-  return isString(obj) || angular.isArray(obj) || length === 0 ||
-         typeof length === 'number' && length > 0 && (length - 1) in obj;
-}
-
-/**
- * Computes a hash of an 'obj'.
- * Hash of a:
- *  string is string
- *  number is number as string
- *  object is either result of calling $$hashKey function on the object or uniquely generated id,
- *         that is also assigned to the $$hashKey property of the object.
- *
- * @param obj
- * @returns {string} hash string such that the same input will have the same hash string.
- *         The resulting string key is in 'type:hashKey' format.
- */
-function hashKey(obj) {
-  var objType = typeof obj,
-      key;
-
-  if (objType == 'object' && obj !== null) {
-    if (typeof (key = obj.$$hashKey) == 'function') {
-      // must invoke on object to keep the right this
-      key = obj.$$hashKey();
-    } else if (key === undefined) {
-      key = obj.$$hashKey = nextUid();
-    }
-  } else {
-    key = obj;
-  }
-
-  return objType + ':' + key;
-}
-
-angular.module('ionic.ui.virtRepeat', [])
-
-.directive('virtRepeat', ['$parse', '$animate', function($parse, $animate) {
-  var NG_REMOVED = '$$NG_REMOVED';
-  return {
-    transclude: 'element',
-    priority: 1000,
-    terminal: true,
-    require: '?^virtualList',
-    compile: function(element, attr, linker) {
-      return function($scope, $element, $attr, virtualList) {
-        var expression = $attr.virtRepeat;
-        var match = expression.match(/^\s*(.+)\s+in\s+(.*?)\s*(\s+track\s+by\s+(.+)\s*)?$/),
-          trackByExp, trackByExpGetter, trackByIdExpFn, trackByIdArrayFn, trackByIdObjFn,
-          lhs, rhs, valueIdentifier, keyIdentifier,
-          hashFnLocals = {$id: hashKey};
-
-        if (!match) {
-          throw ngRepeatMinErr('iexp', "Expected expression in form of '_item_ in _collection_[ track by _id_]' but got '{0}'.",
-            expression);
-        }
-
-        lhs = match[1];
-        rhs = match[2];
-        trackByExp = match[4];
-
-        if (trackByExp) {
-          trackByExpGetter = $parse(trackByExp);
-          trackByIdExpFn = function(key, value, index) {
-            // assign key, value, and $index to the locals so that they can be used in hash functions
-            if (keyIdentifier) hashFnLocals[keyIdentifier] = key;
-            hashFnLocals[valueIdentifier] = value;
-            hashFnLocals.$index = index;
-            return trackByExpGetter($scope, hashFnLocals);
-          };
-        } else {
-          trackByIdArrayFn = function(key, value) {
-            return hashKey(value);
-          };
-          trackByIdObjFn = function(key) {
-            return key;
-          };
-        }
-
-        match = lhs.match(/^(?:([\$\w]+)|\(([\$\w]+)\s*,\s*([\$\w]+)\))$/);
-        if (!match) {
-          throw ngRepeatMinErr('iidexp', "'_item_' in '_item_ in _collection_' should be an identifier or '(_key_, _value_)' expression, but got '{0}'.",
-                                                                    lhs);
-        }
-        valueIdentifier = match[3] || match[1];
-        keyIdentifier = match[2];
-
-        // Store a list of elements from previous run. This is a hash where key is the item from the
-        // iterator, and the value is objects with following properties.
-        //   - scope: bound scope
-        //   - element: previous element.
-        //   - index: position
-        var lastBlockMap = {};
-
-        //watch props
-        $scope.$watchCollection(rhs, function ngRepeatAction(collection){
-          var index, length,
-              previousNode = $element[0],     // current position of the node
-              nextNode,
-              // Same as lastBlockMap but it has the current state. It will become the
-              // lastBlockMap on the next iteration.
-              nextBlockMap = {},
-              arrayLength,
-              childScope,
-              key, value, // key/value of iteration
-              trackById,
-              trackByIdFn,
-              collectionKeys,
-              block,       // last object information {scope, element, id}
-              nextBlockOrder = [],
-              elementsToRemove;
-
-
-          if (isArrayLike(collection)) {
-            collectionKeys = collection;
-            trackByIdFn = trackByIdExpFn || trackByIdArrayFn;
-          } else {
-            trackByIdFn = trackByIdExpFn || trackByIdObjFn;
-            // if object, extract keys, sort them and use to determine order of iteration over obj props
-            collectionKeys = [];
-            for (key in collection) {
-              if (collection.hasOwnProperty(key) && key.charAt(0) != '$') {
-                collectionKeys.push(key);
-              }
-            }
-            collectionKeys.sort();
-          }
-
-          arrayLength = collectionKeys.length;
-
-          // locate existing items
-          length = nextBlockOrder.length = collectionKeys.length;
-          for(index = 0; index < length; index++) {
-           key = (collection === collectionKeys) ? index : collectionKeys[index];
-           value = collection[key];
-           trackById = trackByIdFn(key, value, index);
-           assertNotHasOwnProperty(trackById, '`track by` id');
-           if(lastBlockMap.hasOwnProperty(trackById)) {
-             block = lastBlockMap[trackById];
-             delete lastBlockMap[trackById];
-             nextBlockMap[trackById] = block;
-             nextBlockOrder[index] = block;
-           } else if (nextBlockMap.hasOwnProperty(trackById)) {
-             // restore lastBlockMap
-             forEach(nextBlockOrder, function(block) {
-               if (block && block.startNode) lastBlockMap[block.id] = block;
-             });
-             // This is a duplicate and we need to throw an error
-             throw ngRepeatMinErr('dupes', "Duplicates in a repeater are not allowed. Use 'track by' expression to specify unique keys. Repeater: {0}, Duplicate key: {1}",
-                                                                                                                                                    expression,       trackById);
-           } else {
-             // new never before seen block
-             nextBlockOrder[index] = { id: trackById };
-             nextBlockMap[trackById] = false;
-           }
-         }
-
-          // remove existing items
-          for (key in lastBlockMap) {
-            // lastBlockMap is our own object so we don't need to use special hasOwnPropertyFn
-            if (lastBlockMap.hasOwnProperty(key)) {
-              block = lastBlockMap[key];
-              elementsToRemove = getBlockElements(block);
-              $animate.leave(elementsToRemove);
-              forEach(elementsToRemove, function(element) { element[NG_REMOVED] = true; });
-              block.scope.$destroy();
-            }
-          }
-
-          // we are not using forEach for perf reasons (trying to avoid #call)
-          for (index = 0, length = collectionKeys.length; index < length; index++) {
-            key = (collection === collectionKeys) ? index : collectionKeys[index];
-            value = collection[key];
-            block = nextBlockOrder[index];
-            if (nextBlockOrder[index - 1]) previousNode = nextBlockOrder[index - 1].endNode;
-
-            if (block.startNode) {
-              // if we have already seen this object, then we need to reuse the
-              // associated scope/element
-              childScope = block.scope;
-
-              nextNode = previousNode;
-              do {
-                nextNode = nextNode.nextSibling;
-              } while(nextNode && nextNode[NG_REMOVED]);
-
-              if (block.startNode != nextNode) {
-                // existing item which got moved
-                $animate.move(getBlockElements(block), null, angular.element(previousNode));
-              }
-              previousNode = block.endNode;
-            } else {
-              // new item which we don't know about
-              childScope = $scope.$new();
-            }
-
-            childScope[valueIdentifier] = value;
-            if (keyIdentifier) childScope[keyIdentifier] = key;
-            childScope.$index = index;
-            childScope.$first = (index === 0);
-            childScope.$last = (index === (arrayLength - 1));
-            childScope.$middle = !(childScope.$first || childScope.$last);
-            // jshint bitwise: false
-            childScope.$odd = !(childScope.$even = (index&1) === 0);
-            // jshint bitwise: true
-
-            /*
-            if (!block.startNode) {
-              linker(childScope, function(clone) {
-                clone[clone.length++] = document.createComment(' end ngRepeat: ' + expression + ' ');
-                $animate.enter(clone, null, angular.element(previousNode));
-                previousNode = clone;
-                block.scope = childScope;
-                block.startNode = previousNode && previousNode.endNode ? previousNode.endNode : clone[0];
-                block.endNode = clone[clone.length - 1];
-                nextBlockMap[block.id] = block;
-              });
-            }
-            */
-          }
-          lastBlockMap = nextBlockMap;
-        });
-
-        if(virtualList) {
-          virtualList.listView.didScroll = function(e) {
-            var itemHeight = this.itemHeight;
-
-            // TODO: This would be inaccurate if we are windowed
-            var totalItems = this.listEl.children.length;
-
-            // Grab the total height of the list
-            var scrollHeight = e.target.scrollHeight;
-
-            // Get the viewport height
-            var viewportHeight = this.el.parentNode.offsetHeight;
-
-            // scrollTop is the current scroll position
-            var scrollTop = e.scrollTop;
-
-            // High water is the pixel position of the first element to include (everything before
-            // that will be removed)
-            var highWater = Math.max(0, e.scrollTop + this.virtualRemoveThreshold);
-
-            // Low water is the pixel position of the last element to include (everything after
-            // that will be removed)
-            var lowWater = Math.min(scrollHeight, Math.abs(e.scrollTop) + viewportHeight + this.virtualAddThreshold);
-
-            // Compute how many items per viewport size can show
-            var itemsPerViewport = Math.floor((lowWater - highWater) / itemHeight);
-
-            // Get the first and last elements in the list based on how many can fit
-            // between the pixel range of lowWater and highWater
-            var first = parseInt(Math.abs(highWater / itemHeight));
-            var last = parseInt(Math.abs(lowWater / itemHeight));
-
-            // Get the items we need to remove
-            this._virtualItemsToRemove = Array.prototype.slice.call(this.listEl.children, 0, first);
-
-            // Grab the nodes we will be showing
-            var nodes = Array.prototype.slice.call(this.listEl.children, first, first + itemsPerViewport);
-
-            console.log('RENDER VIEWPORT', itemHeight, totalItems, highWater, lowWater, first, last);
-          };
-        }
-
-      };
-    }
-  };
-        
-
-  function getBlockElements(block) {
-    if (block.startNode === block.endNode) {
-      return angular.element(block.startNode);
-    }
-
-    var element = block.startNode;
-    var elements = [element];
-
-    do {
-      element = element.nextSibling;
-      if (!element) break;
-      elements.push(element);
-    } while (element !== block.endNode);
-
-    return angular.element(elements);
-  }
-}]);
-
-/*
-.directive('virtRepeat', ['$log', function($log) {
-  return {
-    require: ['?ngModel', '^virtualList'],
-    transclude: 'element',
-    priority: 1000,
-    terminal: true,
-    compile: function(element, attr, transclude) {
-      // Parse the repeat expression
-      var match = attr.virtRepeat.match(/^\s*([\$\w]+)\s+in\s+(\S*)\s*$/);
+    // Turn the expression supplied to the directive:
+    //
+    //     a in b
+    //
+    // into `{ value: "a", collection: "b" }`
+    function parseRepeatExpression(expression){
+      var match = expression.match(/^\s*([\$\w]+)\s+in\s+(\S*)\s*$/);
       if (! match) {
-        throw new Error("Expected virRepeat in form of '_item_ in _collection_' but got '" + expression + "'.");
+        throw new Error("Expected sfVirtualRepeat in form of '_item_ in _collection_' but got '" +
+                        expression + "'.");
       }
-
-      var expr = {
+      return {
         value: match[1],
         collection: match[2]
       };
+    }
 
-      // Linking func
-      return function($scope, $element, $attr, ctrls) {
-        var virtualList = ctrls[1];
-        var _this = this;
+    // Utility to filter out elements by tag name
+    function isTagNameInList(element, list){
+      var t, tag = element.tagName.toUpperCase();
+      for( t = 0; t < list.length; t++ ){
+        if( list[t] === tag ){
+          return true;
+        }
+      }
+      return false;
+    }
 
-        var state = {
-          //  - The index of the first active element
-          firstActive: 0,
-          //  - The index of the first visible element
-          firstVisible: 0,
-          //  - The number of elements visible in the viewport.
-          visible: 0,
-          // - The number of active elements
-          active: 0,
-          // - The total number of elements
-          total: 0,
-          // - The point ahead at which we add new elements
-          lowWater: 100,
-          // - The point behind at which we remove old elements
-          highWater: -300
-        };
 
-        var makeNewScope = function(idx, collection, containerScope) {
+    // Utility to find the viewport/content elements given the start element:
+    function findViewportAndContent(startElement){
+      /*jshint eqeqeq:false, curly:false */
+      var root = $rootElement[0];
+      var e, n;
+      // Somewhere between the grandparent and the root node
+      for( e = startElement.parent().parent()[0]; e !== root; e = e.parentNode ){
+        // is an element
+        if( e.nodeType != 1 ) break;
+        // that isn't in the blacklist (tables etc.),
+        if( isTagNameInList(e, DONT_WORK_AS_VIEWPORTS) ) continue;
+        // has a single child element (the content),
+        if( e.childElementCount != 1 ) continue;
+        // which is not in the blacklist
+        if( isTagNameInList(e.firstElementChild, DONT_WORK_AS_CONTENT) ) continue;
+        // and no text.
+        for( n = e.firstChild; n; n = n.nextSibling ){
+          if( n.nodeType == 3 && /\S/g.test(n.textContent) ){
+            break;
+          }
+        }
+        if( n == null ){
+          // That element should work as a viewport.
+          return {
+            viewport: angular.element(e),
+            content: angular.element(e.firstElementChild)
+          };
+        }
+      }
+      throw new Error("No suitable viewport element");
+    }
+
+    // Apply explicit height and overflow styles to the viewport element.
+    //
+    // If the viewport has a max-height (inherited or otherwise), set max-height.
+    // Otherwise, set height from the current computed value or use
+    // window.innerHeight as a fallback
+    //
+    function setViewportCss(viewport){
+      var viewportCss = {'overflow': 'auto'},
+          style = window.getComputedStyle ?
+            window.getComputedStyle(viewport[0]) :
+            viewport[0].currentStyle,
+          maxHeight = style && style.getPropertyValue('max-height'),
+          height = style && style.getPropertyValue('height');
+
+      if( maxHeight && maxHeight !== '0px' ){
+        viewportCss.maxHeight = maxHeight;
+      }else if( height && height !== '0px' ){
+        viewportCss.height = height;
+      }else{
+        viewportCss.height = window.innerHeight;
+      }
+      viewport.css(viewportCss);
+    }
+
+    // Apply explicit styles to the content element to prevent pesky padding
+    // or borders messing with our calculations:
+    function setContentCss(content){
+      var contentCss = {
+        margin: 0,
+        padding: 0,
+        border: 0,
+        'box-sizing': 'border-box'
+      };
+      content.css(contentCss);
+    }
+
+    // TODO: compute outerHeight (padding + border unless box-sizing is border)
+    function computeRowHeight(element){
+      var style = window.getComputedStyle ? window.getComputedStyle(element)
+                                          : element.currentStyle,
+          maxHeight = style && style.getPropertyValue('max-height'),
+          height = style && style.getPropertyValue('height');
+
+      if( height && height !== '0px' && height !== 'auto' ){
+        $log.info('Row height is "%s" from css height', height);
+      }else if( maxHeight && maxHeight !== '0px' && maxHeight !== 'none' ){
+        height = maxHeight;
+        $log.info('Row height is "%s" from css max-height', height);
+      }else if( element.clientHeight ){
+        height = element.clientHeight+'px';
+        $log.info('Row height is "%s" from client height', height);
+      }else{
+        throw new Error("Unable to compute height of row");
+      }
+      angular.element(element).css('height', height);
+      return parseInt(height, 10);
+    }
+
+    // The compile gathers information about the declaration. There's not much
+    // else we could do in the compile step as we need a viewport parent that
+    // is exculsively ours - this is only available at link time.
+    function sfVirtualRepeatCompile(element, attr, linker) {
+      var ident = parseRepeatExpression(attr.sfVirtualRepeat);
+
+      return {
+        post: sfVirtualRepeatPostLink
+      };
+      // ----
+
+      // Set up the initial value for our watch expression (which is just the
+      // start and length of the active rows and the collection length) and
+      // adds a listener to handle child scopes based on the active rows.
+      function sfVirtualRepeatPostLink(scope, iterStartElement, attrs){
+
+        var rendered = [];
+        var rowHeight = 0;
+        var sticky = false;
+        var dom = findViewportAndContent(iterStartElement);
+        // The list structure is controlled by a few simple (visible) variables:
+        var state = 'ngModel' in attrs ? scope.$eval(attrs.ngModel) : {};
+        //  - The index of the first active element
+        state.firstActive = 0;
+        //  - The index of the first visible element
+        state.firstVisible = 0;
+        //  - The number of elements visible in the viewport.
+        state.visible = 0;
+        // - The number of active elements
+        state.active = 0;
+        // - The total number of elements
+        state.total = 0;
+        // - The point at which we add new elements
+        state.lowWater = state.lowWater || 100;
+        // - The point at which we remove old elements
+        state.highWater = state.highWater || 300;
+        // TODO: now watch the water marks
+
+        setContentCss(dom.content);
+        setViewportCss(dom.viewport);
+        // When the user scrolls, we move the `state.firstActive`
+        dom.viewport.bind('scroll', sfVirtualRepeatOnScroll);
+
+        // The watch on the collection is just a watch on the length of the
+        // collection. We don't care if the content changes.
+        scope.$watch(sfVirtualRepeatWatchExpression, sfVirtualRepeatListener, true);
+
+        // and that's the link done! All the action is in the handlers...
+        return;
+        // ----
+
+        // Apply explicit styles to the item element
+        function setElementCss (element) {
+          var elementCss = {
+            // no margin or it'll screw up the height calculations.
+            margin: '0'
+          };
+          if( !isTagNameInList(element[0], DONT_SET_DISPLAY_BLOCK) ){
+            // display: block if it's safe to do so
+            elementCss.display = 'block';
+          }
+          if( rowHeight ){
+            elementCss.height = rowHeight+'px';
+          }
+          element.css(elementCss);
+        }
+
+        function makeNewScope (idx, collection, containerScope) {
           var childScope = containerScope.$new();
-          childScope[expr.value] = collection[idx];
+          childScope[ident.value] = collection[idx];
           childScope.$index = idx;
           childScope.$first = (idx === 0);
           childScope.$last = (idx === (collection.length - 1));
           childScope.$middle = !(childScope.$first || childScope.$last);
           childScope.$watch(function updateChildScopeItem(){
-            childScope[expr.value] = collection[idx];
+            childScope[ident.value] = collection[idx];
           });
           return childScope;
-        };
+        }
 
-        var addElements = function(start, end, collection, containerScope, insPoint) {
+        function addElements (start, end, collection, containerScope, insPoint) {
           var frag = document.createDocumentFragment();
           var newElements = [], element, idx, childScope;
           for( idx = start; idx !== end; idx ++ ){
             childScope = makeNewScope(idx, collection, containerScope);
-            element = transclude(childScope, angular.noop);
+            element = linker(childScope, angular.noop);
             setElementCss(element);
             newElements.push(element);
             frag.appendChild(element[0]);
           }
           insPoint.after(frag);
           return newElements;
-        };
+        }
 
-        var recomputeActive = function() {
-          // The goal of this function is to calculate the start element
-          // index and how many to show in the list
-
-          // Get the start element
-          if(state.firstActive > (state.firstVisible - state.lowWater)) {
-          }
-
-
+        function recomputeActive() {
           // We want to set the start to the low water mark unless the current
           // start is already between the low and high water marks.
           var start = clip(state.firstActive, state.firstVisible - state.lowWater, state.firstVisible - state.highWater);
-
           // Similarly for the end
           var end = clip(state.firstActive + state.active,
                          state.firstVisible + state.visible + state.lowWater,
                          state.firstVisible + state.visible + state.highWater );
           state.firstActive = Math.max(0, start);
           state.active = Math.min(end, state.total) - state.firstActive;
-        };
+        }
 
-        // When the watch expression changes for the collection
-        // our scope is bound to, do the magical fairy dust stuff
-        var virtRepeatListener = function(newValue, oldValue, scope) {
+        function sfVirtualRepeatOnScroll(evt){
+          if( !rowHeight ){
+            return;
+          }
+          // Enter the angular world for the state change to take effect.
+          scope.$apply(function(){
+            state.firstVisible = Math.floor(evt.target.scrollTop / rowHeight);
+            state.visible = Math.ceil(dom.viewport[0].clientHeight / rowHeight);
+            $log.log('scroll to row %o', state.firstVisible);
+            sticky = evt.target.scrollTop + evt.target.clientHeight >= evt.target.scrollHeight;
+            recomputeActive();
+            $log.log(' state is now %o', state);
+            $log.log(' sticky = %o', sticky);
+          });
+        }
+
+        function sfVirtualRepeatWatchExpression(scope){
+          var coll = scope.$eval(ident.collection);
+          if( coll.length !== state.total ){
+            state.total = coll.length;
+            recomputeActive();
+          }
+          return {
+            start: state.firstActive,
+            active: state.active,
+            len: coll.length
+          };
+        }
+
+        function destroyActiveElements (action, count) {
+          var dead, ii, remover = Array.prototype[action];
+          for( ii = 0; ii < count; ii++ ){
+            dead = remover.call(rendered);
+            dead.scope().$destroy();
+            dead.remove();
+          }
+        }
+
+        // When the watch expression for the repeat changes, we may need to add
+        // and remove scopes and elements
+        function sfVirtualRepeatListener(newValue, oldValue, scope){
           var oldEnd = oldValue.start + oldValue.active,
-              collection = scope.$eval(expr.collection),
+              collection = scope.$eval(ident.collection),
               newElements;
-
-          if(newValue === oldValue) {
+          if( newValue === oldValue ){
             $log.info('initial listen');
-            newElements = addElements(newValue.start, oldEnd, collection, scope, $element);
+            newElements = addElements(newValue.start, oldEnd, collection, scope, iterStartElement);
             rendered = newElements;
-            if(rendered.length) {
+            if( rendered.length ){
               rowHeight = computeRowHeight(newElements[0][0]);
             }
-          } else {
+          }else{
             var newEnd = newValue.start + newValue.active;
             var forward = newValue.start >= oldValue.start;
             var delta = forward ? newValue.start - oldValue.start
@@ -1814,505 +1652,49 @@ angular.module('ionic.ui.virtRepeat', [])
             var endDelta = newEnd >= oldEnd ? newEnd - oldEnd : oldEnd - newEnd;
             var contiguous = delta < (forward ? oldValue.active : newValue.active);
             $log.info('change by %o,%o rows %s', delta, endDelta, forward ? 'forward' : 'backward');
-            if(!contiguous) {
+            if( !contiguous ){
               $log.info('non-contiguous change');
               destroyActiveElements('pop', rendered.length);
-              rendered = addElements(newValue.start, newEnd, collection, scope, $element);
-            } else {
-              if(forward ) {
+              rendered = addElements(newValue.start, newEnd, collection, scope, iterStartElement);
+            }else{
+              if( forward ){
                 $log.info('need to remove from the top');
                 destroyActiveElements('shift', delta);
-              } else if(delta) {
+              }else if( delta ){
                 $log.info('need to add at the top');
-
                 newElements = addElements(
                   newValue.start,
                   oldValue.start,
-                  collection, scope, $element);
-
+                  collection, scope, iterStartElement);
                 rendered = newElements.concat(rendered);
               }
-
-              if(newEnd < oldEnd) {
-
+              if( newEnd < oldEnd ){
                 $log.info('need to remove from the bottom');
                 destroyActiveElements('pop', oldEnd - newEnd);
-
-              } else if(endDelta) {
-
+              }else if( endDelta ){
                 var lastElement = rendered[rendered.length-1];
-
                 $log.info('need to add to the bottom');
-
                 newElements = addElements(
                   oldEnd,
                   newEnd,
                   collection, scope, lastElement);
-
                 rendered = rendered.concat(newElements);
-
               }
             }
-            if(!rowHeight && rendered.length) {
+            if( !rowHeight && rendered.length ){
               rowHeight = computeRowHeight(rendered[0][0]);
             }
-
             dom.content.css({'padding-top': newValue.start * rowHeight + 'px'});
           }
           dom.content.css({'height': newValue.len * rowHeight + 'px'});
           if( sticky ){
             dom.viewport[0].scrollTop = dom.viewport[0].clientHeight + dom.viewport[0].scrollHeight;
           }
-        };
-
-        $scope.$watchCollection(expr.collection, virtRepeatListener);
-        // watch for changes on the repeat expression
-        $scope.$watch(function(scope) {
-          // Evaluate the collection
-          var coll = scope.$eval(expr.collection);
-
-          if(coll.length !== state.total) {
-            state.total = coll.length;
-            state.active = Math.min(state.end, state.total) - state.first;
-          }
-          return {
-            start: state.firstActive,
-            active: state.active,
-            len: coll.length
-          };
-        }, virtRepeatListener, true);
-
-
-        // Listen for scroll events
-        virtualList.listView.didScroll = function(e) {
-          console.log('RENDER VIEWPORT', high, low, start, end);
-          state.first = start;
-          state.end = end;
-          // Calculate how many items will be rendered
-          state.active = Math.min(end, state.total) - state.first;
-
-          var itemHeight = this.itemHeight;
-
-          // TODO: This would be inaccurate if we are windowed
-          var totalItems = this.listEl.children.length;
-
-          // Grab the total height of the list
-          var scrollHeight = e.target.scrollHeight;
-
-          // Get the viewport height
-          var viewportHeight = this.el.parentNode.offsetHeight;
-
-          // scrollTop is the current scroll position
-          var scrollTop = e.scrollTop;
-
-          // High water is the pixel position of the first element to include (everything before
-          // that will be removed)
-          var highWater = Math.max(0, e.scrollTop + this.virtualRemoveThreshold);
-
-          // Low water is the pixel position of the last element to include (everything after
-          // that will be removed)
-          var lowWater = Math.min(scrollHeight, Math.abs(e.scrollTop) + viewportHeight + this.virtualAddThreshold);
-
-          // Compute how many items per viewport size can show
-          var itemsPerViewport = Math.floor((lowWater - highWater) / itemHeight);
-
-          // Get the first and last elements in the list based on how many can fit
-          // between the pixel range of lowWater and highWater
-          var first = parseInt(Math.abs(highWater / itemHeight));
-          var last = parseInt(Math.abs(lowWater / itemHeight));
-
-          // Get the items we need to remove
-          this._virtualItemsToRemove = Array.prototype.slice.call(this.listEl.children, 0, first);
-
-          // Grab the nodes we will be showing
-          var nodes = Array.prototype.slice.call(this.listEl.children, first, first + itemsPerViewport);
-          scope.$apply(function(){
-          });          
-
-        }
-
-      }
-    }
-  }
-}]);
-*/
-
-})(ionic);
-;
-
-(function() {
-'use strict';
-
-// Turn the expression supplied to the directive:
-//
-//     a in b
-//
-// into `{ value: "a", collection: "b" }`
-function parseRepeatExpression(expression){
-  var match = expression.match(/^\s*([\$\w]+)\s+in\s+(\S*)\s*$/);
-  if (! match) {
-    throw new Error("Expected sfVirtualRepeat in form of '_item_ in _collection_' but got '" +
-                    expression + "'.");
-  }
-  return {
-    value: match[1],
-    collection: match[2]
-  };
-}
-
-// Utility to filter out elements by tag name
-function isTagNameInList(element, list){
-  var t, tag = element.tagName.toUpperCase();
-  for( t = 0; t < list.length; t++ ){
-    if( list[t] === tag ){
-      return true;
-    }
-  }
-  return false;
-}
-
-
-// Utility to find the viewport/content elements given the start element:
-function findViewportAndContent(startElement){
-  /*jshint eqeqeq:false, curly:false */
-  var root = $rootElement[0];
-  var e, n;
-  // Somewhere between the grandparent and the root node
-  for( e = startElement.parent().parent()[0]; e !== root; e = e.parentNode ){
-    // is an element
-    if( e.nodeType != 1 ) break;
-    // that isn't in the blacklist (tables etc.),
-    if( isTagNameInList(e, DONT_WORK_AS_VIEWPORTS) ) continue;
-    // has a single child element (the content),
-    if( e.childElementCount != 1 ) continue;
-    // which is not in the blacklist
-    if( isTagNameInList(e.firstElementChild, DONT_WORK_AS_CONTENT) ) continue;
-    // and no text.
-    for( n = e.firstChild; n; n = n.nextSibling ){
-      if( n.nodeType == 3 && /\S/g.test(n.textContent) ){
-        break;
-      }
-    }
-    if( n == null ){
-      // That element should work as a viewport.
-      return {
-        viewport: angular.element(e),
-        content: angular.element(e.firstElementChild)
-      };
-    }
-  }
-  throw new Error("No suitable viewport element");
-}
-
-// Apply explicit height and overflow styles to the viewport element.
-//
-// If the viewport has a max-height (inherited or otherwise), set max-height.
-// Otherwise, set height from the current computed value or use
-// window.innerHeight as a fallback
-//
-function setViewportCss(viewport){
-  var viewportCss = {'overflow': 'auto'},
-      style = window.getComputedStyle ?
-        window.getComputedStyle(viewport[0]) :
-        viewport[0].currentStyle,
-      maxHeight = style && style.getPropertyValue('max-height'),
-      height = style && style.getPropertyValue('height');
-
-  if( maxHeight && maxHeight !== '0px' ){
-    viewportCss.maxHeight = maxHeight;
-  }else if( height && height !== '0px' ){
-    viewportCss.height = height;
-  }else{
-    viewportCss.height = window.innerHeight;
-  }
-  viewport.css(viewportCss);
-}
-
-// Apply explicit styles to the content element to prevent pesky padding
-// or borders messing with our calculations:
-function setContentCss(content){
-  var contentCss = {
-    margin: 0,
-    padding: 0,
-    border: 0,
-    'box-sizing': 'border-box'
-  };
-  content.css(contentCss);
-}
-
-// TODO: compute outerHeight (padding + border unless box-sizing is border)
-function computeRowHeight(element){
-  var style = window.getComputedStyle ? window.getComputedStyle(element)
-                                      : element.currentStyle,
-      maxHeight = style && style.getPropertyValue('max-height'),
-      height = style && style.getPropertyValue('height');
-
-  if( height && height !== '0px' && height !== 'auto' ){
-    $log.info('Row height is "%s" from css height', height);
-  }else if( maxHeight && maxHeight !== '0px' && maxHeight !== 'none' ){
-    height = maxHeight;
-    $log.info('Row height is "%s" from css max-height', height);
-  }else if( element.clientHeight ){
-    height = element.clientHeight+'px';
-    $log.info('Row height is "%s" from client height', height);
-  }else{
-    throw new Error("Unable to compute height of row");
-  }
-  angular.element(element).css('height', height);
-  return parseInt(height, 10);
-}
-
-angular.module('ionic.ui.virtualRepeat', [])
-
-/**
- * A replacement for ng-repeat that supports virtual lists.
- * This is not a 1 to 1 replacement for ng-repeat. However, in situations
- * where you have huge lists, this repeater will work with our virtual
- * scrolling to only render items that are showing or will be showing
- * if a scroll is made.
- */
-.directive('virtualRepeat', ['$log', function($log) {
-    return {
-      require: ['?ngModel, ^virtualList'],
-      transclude: 'element',
-      priority: 1000,
-      terminal: true,
-      compile: function(element, attr, transclude) {
-        var ident = parseRepeatExpression(attr.sfVirtualRepeat);
-
-        return function(scope, iterStartElement, attrs, ctrls, b) {
-          var virtualList = ctrls[1];
-
-          var rendered = [];
-          var rowHeight = 0;
-          var sticky = false;
-
-          var dom = virtualList.element;
-          //var dom = findViewportAndContent(iterStartElement);
-
-          // The list structure is controlled by a few simple (visible) variables:
-          var state = 'ngModel' in attrs ? scope.$eval(attrs.ngModel) : {};
-
-          function makeNewScope (idx, collection, containerScope) {
-            var childScope = containerScope.$new();
-            childScope[ident.value] = collection[idx];
-            childScope.$index = idx;
-            childScope.$first = (idx === 0);
-            childScope.$last = (idx === (collection.length - 1));
-            childScope.$middle = !(childScope.$first || childScope.$last);
-            childScope.$watch(function updateChildScopeItem(){
-              childScope[ident.value] = collection[idx];
-            });
-            return childScope;
-          }
-
-          // Given the collection and a start and end point, add the current
-          function addElements (start, end, collection, containerScope, insPoint) {
-            var frag = document.createDocumentFragment();
-            var newElements = [], element, idx, childScope;
-            for( idx = start; idx !== end; idx ++ ){
-              childScope = makeNewScope(idx, collection, containerScope);
-              element = linker(childScope, angular.noop);
-              //setElementCss(element);
-              newElements.push(element);
-              frag.appendChild(element[0]);
-            }
-            insPoint.after(frag);
-            return newElements;
-          }
-
-          function recomputeActive() {
-            // We want to set the start to the low water mark unless the current
-            // start is already between the low and high water marks.
-            var start = clip(state.firstActive, state.firstVisible - state.lowWater, state.firstVisible - state.highWater);
-            // Similarly for the end
-            var end = clip(state.firstActive + state.active,
-                           state.firstVisible + state.visible + state.lowWater,
-                           state.firstVisible + state.visible + state.highWater );
-            state.firstActive = Math.max(0, start);
-            state.active = Math.min(end, state.total) - state.firstActive;
-          }
-
-          function sfVirtualRepeatOnScroll(evt){
-            if( !rowHeight ){
-              return;
-            }
-            // Enter the angular world for the state change to take effect.
-            scope.$apply(function(){
-              state.firstVisible = Math.floor(evt.target.scrollTop / rowHeight);
-              state.visible = Math.ceil(dom.viewport[0].clientHeight / rowHeight);
-              $log.log('scroll to row %o', state.firstVisible);
-              sticky = evt.target.scrollTop + evt.target.clientHeight >= evt.target.scrollHeight;
-              recomputeActive();
-              $log.log(' state is now %o', state);
-              $log.log(' sticky = %o', sticky);
-            });
-          }
-
-          function sfVirtualRepeatWatchExpression(scope){
-            var coll = scope.$eval(ident.collection);
-            if( coll.length !== state.total ){
-              state.total = coll.length;
-              recomputeActive();
-            }
-            return {
-              start: state.firstActive,
-              active: state.active,
-              len: coll.length
-            };
-          }
-
-          function destroyActiveElements (action, count) {
-            var dead, ii, remover = Array.prototype[action];
-            for( ii = 0; ii < count; ii++ ){
-              dead = remover.call(rendered);
-              dead.scope().$destroy();
-              dead.remove();
-            }
-          }
-
-          // When the watch expression for the repeat changes, we may need to add
-          // and remove scopes and elements
-          function destroyActiveElements (action, count) {
-            var dead, ii, remover = Array.prototype[action];
-            for( ii = 0; ii < count; ii++ ){
-              dead = remover.call(rendered);
-              dead.scope().$destroy();
-              dead.remove();
-            }
-          }
-          function sfVirtualRepeatListener(newValue, oldValue, scope){
-            // Grab the collection, computing the end value as the old start
-            // plus how many are active
-            var oldEnd = oldValue.start + oldValue.active,
-                collection = scope.$eval(ident.collection),
-                newElements;
-
-            // If the new value and old value are the same, I think that's the first time?
-            if(newValue === oldValue) {
-              $log.info('initial listen');
-              
-              // Create new elements, appending them all after the start of this list
-              newElements = addElements(newValue.start, oldEnd, collection, scope, iterStartElement);
-              rendered = newElements;
-              if(rendered.length) {
-                rowHeight = computeRowHeight(newElements[0][0]);
-              }
-            } else {
-
-              // Find the new end point, which is just the start plus the active
-              var newEnd = newValue.start + newValue.active;
-
-              // Is this a forward movement? New.start is after old.start
-              var forward = newValue.start >= oldValue.start;
-
-              // Calculate the number of items we've moved up or down
-              var delta = forward ? newValue.start - oldValue.start
-                                  : oldValue.start - newValue.start;
-
-              // Calculate the number of items at the end that we've moved up or down
-              var endDelta = newEnd >= oldEnd ? newEnd - oldEnd : oldEnd - newEnd;
-
-              // Check if we've changed by an amount that is greater than the active elements,
-              // which would mean we have to remove all the elements and add them again
-              var contiguous = delta < (forward ? oldValue.active : newValue.active);
-              $log.info('change by %o,%o rows %s', delta, endDelta, forward ? 'forward' : 'backward');
-
-
-              if(!contiguous) {
-                $log.info('non-contiguous change');
-                // Remove all the old elements
-                destroyActiveElements('pop', rendered.length);
-
-                // Add our new ones back again
-                rendered = addElements(newValue.start, newEnd, collection, scope, iterStartElement);
-
-              } else {
-
-                // THIS IS A NORMAL SITUATION
-
-
-                if(forward) {
-                  // We are moving forward
-                  $log.info('need to remove from the top');
-
-                  // Remove the number we've moved forward from the beginning of the list
-                  destroyActiveElements('shift', delta);
-
-                } else if(delta) {
-
-                  // We've moved back, so add new elements to the top of the list
-
-                  $log.info('need to add at the top');
-                  newElements = addElements(
-                    newValue.start,
-                    oldValue.start,
-                    collection, scope, iterStartElement);
-
-                  // Add the new rendered elements to the old ones
-                  rendered = newElements.concat(rendered);
-                }
-
-                // If we've moved UP
-                if(newEnd < oldEnd) {
-                  $log.info('need to remove from the bottom');
-                  destroyActiveElements('pop', oldEnd - newEnd);
-
-                } else if(endDelta) {
-                  // Otherwise, if we've moved down, add them to the bottom
-                  var lastElement = rendered[rendered.length-1];
-                  $log.info('need to add to the bottom');
-                  newElements = addElements(
-                    oldEnd,
-                    newEnd,
-                    collection, scope, lastElement);
-                  rendered = rendered.concat(newElements);
-                }
-              }
-
-              // Row height changed?
-              if(!rowHeight && rendered.length) {
-                rowHeight = computeRowHeight(rendered[0][0]);
-              }
-
-              // Add padding at the top for scroll bars
-              dom.content.css({'padding-top': newValue.start * rowHeight + 'px'});
-            }
-
-            // Set the height so it looks right
-            dom.content.css({'height': newValue.len * rowHeight + 'px'});
-            if(sticky) {
-              dom.viewport[0].scrollTop = dom.viewport[0].clientHeight + dom.viewport[0].scrollHeight;
-            }
-          }
-
-          //  - The index of the first active element
-          state.firstActive = 0;
-          //  - The index of the first visible element
-          state.firstVisible = 0;
-          //  - The number of elements visible in the viewport.
-          state.visible = 0;
-          // - The number of active elements
-          state.active = 0;
-          // - The total number of elements
-          state.total = 0;
-          // - The point at which we add new elements
-          state.lowWater = state.lowWater || 100;
-          // - The point at which we remove old elements
-          state.highWater = state.highWater || 300;
-          // TODO: now watch the water marks
-
-          setContentCss(dom.content);
-          setViewportCss(dom.viewport);
-          // When the user scrolls, we move the `state.firstActive`
-          dom.bind('momentumScrolled', sfVirtualRepeatOnScroll);
-
-          // The watch on the collection is just a watch on the length of the
-          // collection. We don't care if the content changes.
-          scope.$watch(sfVirtualRepeatWatchExpression, sfVirtualRepeatListener, true);
         }
       }
-    };
+    }
   }]);
 
-})(ionic);
+})(window.ionic);
+
+

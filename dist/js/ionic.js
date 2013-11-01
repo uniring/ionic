@@ -3562,8 +3562,8 @@ window.ionic = {
       var highWater = Math.min(0, Math.max(scrollTop, scrollTop - this.itemAddRemoveThreshold));
 
 
-      var first = parseInt(Math.max(0, Math.abs(highWater) / itemHeight));
-      var last = parseInt(Math.min(items.length, lowWater / itemHeight));
+      var first = parseInt(Math.max(0, Math.floor(Math.abs(highWater) / itemHeight)));
+      var last = parseInt(Math.min(items.length, Math.ceil(lowWater / itemHeight)));
 
       var itemsPerViewport = last-first;//Math.floor((lowWater - highWater) / itemHeight);
 
