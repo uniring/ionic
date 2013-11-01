@@ -63,11 +63,11 @@
   <body>
 
     <content ng-controller="testctrl" class="reveal-animation">
-      <virtual-list is-editing="iseditingitems" on-refresh-holding="almostrefreshing()" on-refresh-opening="almostrefreshprojects(ratio)" on-refresh="refreshprojects()" animation="my-repeat-animation" delete-icon="icon-minus-circled" reorder-icon="icon-navicon">
+      <virtual-list item-height="50" is-editing="iseditingitems" on-refresh-holding="almostrefreshing()" on-refresh-opening="almostrefreshprojects(ratio)" on-refresh="refreshprojects()" animation="my-repeat-animation" delete-icon="icon-minus-circled" reorder-icon="icon-navicon">
         <list-refresher>
           <spinner ratio="refreshratio.ratio"></spinner>
         </list-refresher>
-        <list-item virt-repeat="item in items" 
+        <list-item virt="item in items" 
             buttons="item.buttons"
             can-delete="true"
             can-reorder="true"
@@ -84,7 +84,7 @@
     <script src="../../../../dist/js/ionic.js"></script>
     <script src="../../../../dist/js/ionic-angular.js"></script>
     <script>
-      angular.module('navtest', ['ionic.ui.list', 'ionic.ui.content', 'ionic.ui.virtRepeat', 'ngAnimate'])
+      angular.module('navtest', ['ionic.ui.list', 'ionic.ui.content', 'ionic.ui.virt', 'ngAnimate'])
 
       .directive('spinner', function() {
         return {

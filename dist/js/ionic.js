@@ -1807,6 +1807,33 @@ window.ionic = {
 (function(ionic) {
   
   ionic.Utils = {
+    throttle: function(func, wait, options) {
+      var context, args, result;
+      var timeout = null;
+      var previous = 0;
+      options || (options = {});
+      var later = function() {
+        previous = options.leading === false ? 0 : Date.now();
+        timeout = null;
+        result = func.apply(context, args);
+      };
+      return function() {
+        var now = Date.now();
+        if (!previous && options.leading === false) previous = now;
+        var remaining = wait - (now - previous);
+        context = this;
+        args = arguments;
+        if (remaining <= 0) {
+          clearTimeout(timeout);
+          timeout = null;
+          previous = now;
+          result = func.apply(context, args);
+        } else if (!timeout && options.trailing !== false) {
+          timeout = setTimeout(later, remaining);
+        }
+        return result;
+      };
+    },
      // Borrowed from Backbone.js's extend
      // Helper function to correctly set up the prototype chain, for subclasses.
      // Similar to `goog.inherits`, but uses a hash of prototype properties and
@@ -3485,8 +3512,7 @@ window.ionic = {
       var _this = this;
 
       opts = ionic.extend({
-        virtualRemoveThreshold: -200,
-        virtualAddThreshold: 200
+        itemAddRemoveThreshold: 300,
       }, opts);
 
       ionic.extend(this, opts);
@@ -3514,6 +3540,47 @@ window.ionic = {
       }, this.el);
       */
     },
+
+    getViewportBounds: function(items) {
+      var scrollTop = this.y;
+      var scrollLeft = this.x;
+      var itemHeight = this.itemHeight;
+
+      var viewportWidth = this.el.parentNode.offsetWidth;
+      var viewportHeight = this.el.parentNode.offsetHeight;
+      //var scrollHeight = viewportHeight;//this.el.scrollHeight;
+
+      // Compute an estimated total height in case the viewport is not
+      // yet initialized (happens the first items are to be rendered, for example
+      var estimatedTotalHeight = items.length * itemHeight;
+      var scrollHeight = estimatedTotalHeight;
+
+      // The lowest point below the viewport (for adding/removing items)
+      var lowWater = Math.min(scrollHeight, Math.abs(scrollTop) + viewportHeight + this.itemAddRemoveThreshold);
+
+      // The highest point above the viewport (for adding/removing items)
+      var highWater = Math.min(0, Math.max(scrollTop, scrollTop - this.itemAddRemoveThreshold));
+
+
+      var first = parseInt(Math.max(0, Math.abs(highWater) / itemHeight));
+      var last = parseInt(Math.min(items.length, lowWater / itemHeight));
+
+      var itemsPerViewport = last-first;//Math.floor((lowWater - highWater) / itemHeight);
+
+      return {
+        scrollTop: this.y,
+        scrollLeft: this.x,
+        width: viewportWidth,
+        height: viewportHeight,
+        itemsPerViewport: itemsPerViewport,
+        itemHeight: itemHeight,
+        highWater: highWater,
+        lowWater: lowWater,
+        first: first,
+        last:last
+      }
+    },
+
     /**
      * Called to tell the list to stop refreshing. This is useful
      * if you are refreshing the list and are done with refreshing.
@@ -3527,6 +3594,7 @@ window.ionic = {
      * If we scrolled and have virtual mode enabled, compute the window
      * of active elements in order to figure out the viewport to render.
      */
+    /*
     didScroll: function(e) {
       if(this.isVirtual) {
         var itemHeight = this.itemHeight;
@@ -3568,8 +3636,11 @@ window.ionic = {
         this.renderViewport && this.renderViewport(highWater, lowWater, first, last);
       }
     },
+    */
 
     didStopScrolling: function(e) {
+      return;
+
       if(this.isVirtual) {
         for(var i = 0; i < this._virtualItemsToRemove.length; i++) {
           var el = this._virtualItemsToRemove[i];

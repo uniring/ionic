@@ -124,7 +124,7 @@ angular.module('ionic.ui.list', ['ngAnimate'])
         el: $element[0],
         listEl: $element[0].children[0],
         isVirtual: true,
-        itemHeight: $scope.itemHeight,
+        itemHeight: parseInt($scope.itemHeight)
       });
 
       this.listView = lv;

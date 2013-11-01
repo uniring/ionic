@@ -232,46 +232,93 @@ angular.module('ionic.ui.virtualRepeat', [])
 
           // When the watch expression for the repeat changes, we may need to add
           // and remove scopes and elements
+          function destroyActiveElements (action, count) {
+            var dead, ii, remover = Array.prototype[action];
+            for( ii = 0; ii < count; ii++ ){
+              dead = remover.call(rendered);
+              dead.scope().$destroy();
+              dead.remove();
+            }
+          }
           function sfVirtualRepeatListener(newValue, oldValue, scope){
+            // Grab the collection, computing the end value as the old start
+            // plus how many are active
             var oldEnd = oldValue.start + oldValue.active,
                 collection = scope.$eval(ident.collection),
                 newElements;
+
+            // If the new value and old value are the same, I think that's the first time?
             if(newValue === oldValue) {
               $log.info('initial listen');
+              
+              // Create new elements, appending them all after the start of this list
               newElements = addElements(newValue.start, oldEnd, collection, scope, iterStartElement);
               rendered = newElements;
               if(rendered.length) {
                 rowHeight = computeRowHeight(newElements[0][0]);
               }
             } else {
+
+              // Find the new end point, which is just the start plus the active
               var newEnd = newValue.start + newValue.active;
+
+              // Is this a forward movement? New.start is after old.start
               var forward = newValue.start >= oldValue.start;
+
+              // Calculate the number of items we've moved up or down
               var delta = forward ? newValue.start - oldValue.start
                                   : oldValue.start - newValue.start;
+
+              // Calculate the number of items at the end that we've moved up or down
               var endDelta = newEnd >= oldEnd ? newEnd - oldEnd : oldEnd - newEnd;
+
+              // Check if we've changed by an amount that is greater than the active elements,
+              // which would mean we have to remove all the elements and add them again
               var contiguous = delta < (forward ? oldValue.active : newValue.active);
               $log.info('change by %o,%o rows %s', delta, endDelta, forward ? 'forward' : 'backward');
+
+
               if(!contiguous) {
                 $log.info('non-contiguous change');
+                // Remove all the old elements
                 destroyActiveElements('pop', rendered.length);
+
+                // Add our new ones back again
                 rendered = addElements(newValue.start, newEnd, collection, scope, iterStartElement);
+
               } else {
+
+                // THIS IS A NORMAL SITUATION
+
+
                 if(forward) {
+                  // We are moving forward
                   $log.info('need to remove from the top');
+
+                  // Remove the number we've moved forward from the beginning of the list
                   destroyActiveElements('shift', delta);
+
                 } else if(delta) {
+
+                  // We've moved back, so add new elements to the top of the list
+
                   $log.info('need to add at the top');
                   newElements = addElements(
                     newValue.start,
                     oldValue.start,
                     collection, scope, iterStartElement);
+
+                  // Add the new rendered elements to the old ones
                   rendered = newElements.concat(rendered);
                 }
 
+                // If we've moved UP
                 if(newEnd < oldEnd) {
                   $log.info('need to remove from the bottom');
                   destroyActiveElements('pop', oldEnd - newEnd);
+
                 } else if(endDelta) {
+                  // Otherwise, if we've moved down, add them to the bottom
                   var lastElement = rendered[rendered.length-1];
                   $log.info('need to add to the bottom');
                   newElements = addElements(
@@ -281,11 +328,17 @@ angular.module('ionic.ui.virtualRepeat', [])
                   rendered = rendered.concat(newElements);
                 }
               }
+
+              // Row height changed?
               if(!rowHeight && rendered.length) {
                 rowHeight = computeRowHeight(rendered[0][0]);
               }
+
+              // Add padding at the top for scroll bars
               dom.content.css({'padding-top': newValue.start * rowHeight + 'px'});
             }
+
+            // Set the height so it looks right
             dom.content.css({'height': newValue.len * rowHeight + 'px'});
             if(sticky) {
               dom.viewport[0].scrollTop = dom.viewport[0].clientHeight + dom.viewport[0].scrollHeight;
