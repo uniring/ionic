@@ -1,3 +1,18 @@
+// Layout Mixins
+// --------------------------------------------------
+
+
+@mixin flex-container() {
+  @include flex-direction(column);
+  @include display-flex();
+  @include align-items(stretch);
+  @include align-content(stretch);
+  @include flex(1);
+
+  position: relative;
+  overflow: hidden;
+}
+
 
 // Button Mixins
 // --------------------------------------------------

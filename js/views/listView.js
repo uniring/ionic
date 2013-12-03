@@ -469,7 +469,7 @@
           items[i].classList.remove('active');
         }
         item.classList.add('active');
-      }, 250);
+      }, 150);
     },
 
     /**

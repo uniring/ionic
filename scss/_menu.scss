@@ -6,9 +6,6 @@
  */
 
 .menu {
-  position: absolute;
-  top: 0;
-  bottom: 0;
   z-index: 0;
   overflow: hidden;
 
@@ -17,6 +14,8 @@
   width: $menu-width;
 
   background-color: #fff;
+
+  @include flex-container();
 }
 
 .menu-content {

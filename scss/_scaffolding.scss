@@ -24,6 +24,11 @@ body, .ionic-body {
   @include tap-highlight-transparent();
   @include user-select(none);
 
+  @include flex-direction(column);
+  @include display-flex();
+  @include align-items(stretch);
+  @include align-content(stretch);
+
   position: fixed;
   top: 0;
   right: 0;
@@ -179,9 +184,9 @@ body, .ionic-body {
 }
 
 //
-//  A sub container that uses flexbox but fills the remaining size of any pane.
+//  A view that uses flexbox but fills the remaining size of any pane.
 //
-.sub-pane {
+ng-view, .view {
   @include flex-direction(column);
   @include display-flex();
   @include align-items(stretch);

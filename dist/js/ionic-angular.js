@@ -1946,7 +1946,7 @@ angular.module('ionic.ui.sideMenu', ['ionic.service.gesture'])
     replace: true,
     transclude: true,
     scope: true,
-    template: '<div class="sub-pane menu menu-{{side}}"></div>',
+    template: '<div class="menu menu-{{side}}"></div>',
     compile: function(element, attr, transclude) {
       return function($scope, $element, $attr, sideMenuCtrl) {
         $scope.side = $attr.side;
@@ -2109,7 +2109,7 @@ angular.module('ionic.ui.tabs', ['ngAnimate'])
     transclude: true,
     controller: 'TabsCtrl',
     //templateUrl: 'ext/angular/tmpl/ionicTabBar.tmpl.html',
-    template: '<div class="pane"><tab-controller-bar></tab-controller-bar></div>',
+    template: '<div class="view-box"><tab-controller-bar></tab-controller-bar></div>',
     compile: function(element, attr, transclude, tabsCtrl) {
       return function($scope, $element, $attr) {
         var tabs = $element[0].querySelector('.tabs');
@@ -2210,7 +2210,7 @@ angular.module('ionic.ui.tabs', ['ngAnimate'])
             transclude(childScope, function(clone) {
               childElement = clone;
 
-              clone.addClass('sub-pane');
+              clone.addClass('view');
 
               $animate.enter(clone, $element.parent(), $element);
 
