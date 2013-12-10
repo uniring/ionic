@@ -29,6 +29,7 @@ angular.module('ionic.ui.content', [])
       onRefreshOpening: '&',
       onScroll: '&',
       onScrollComplete: '&',
+      onInfiniteScroll: '&',
       refreshComplete: '=',
       scroll: '@',
       hasScrollX: '@',
@@ -93,6 +94,12 @@ angular.module('ionic.ui.content', [])
           // Otherwise, supercharge this baby!
           // Add timeout to let content render so Scroller.resize grabs the right content height
           $timeout(function() { 
+            var infiniteScrollNotifier = ionic.debounce(function() {
+              $scope.$apply(function() {
+                $scope.onInfiniteScroll();
+              });
+            }, 1000, true);
+
             sv = new ionic.views.Scroll({
               el: $element[0],
               scrollEventInterval: parseInt($scope.scrollEventInterval, 10) || 20,
@@ -103,6 +110,7 @@ angular.module('ionic.ui.content', [])
                 });
               }
             });
+
 
             // Activate pull-to-refresh
             if(refresher) {
@@ -119,6 +127,9 @@ angular.module('ionic.ui.content', [])
             }
 
             $element.bind('scroll', function(e) {
+              if(e.detail.scrollTop > sv.__maxScrollTop) {
+                infiniteScrollNotifier();
+              }
               $scope.onScroll({
                 event: e,
                 scrollTop: e.detail ? e.detail.scrollTop : e.originalEvent ? e.originalEvent.detail.scrollTop : 0,

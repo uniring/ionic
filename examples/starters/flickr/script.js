@@ -60,7 +60,7 @@ angular.module('myApp', ['ionic', 'ngResource'])
   return {
     restrict: 'C',
     link: function($scope, $element, $attr) {
-      var size = ($window.outerWidth / 3) - 2;
+      var size = ($window.innerWidth / 3) - 2;
       $element.css('width', size + 'px');
     }
   }
