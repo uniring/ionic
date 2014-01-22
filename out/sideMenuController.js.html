@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: controllers/sideMenuController.js</title>
+    
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+    
+    <h1 class="page-title">Source: controllers/sideMenuController.js</h1>
+    
+    
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>(function(ionic) {
+'use strict';
+
+  /**
+   * The SideMenuController is a controller with a left and/or right menu that
+   * can be slid out and toggled. Seen on many an app.
+   *
+   * The right or left menu can be disabled or not used at all, if desired.
+   */
+  ionic.controllers.SideMenuController = ionic.controllers.ViewController.inherit({
+    initialize: function(options) {
+      var self = this;
+
+      this.left = options.left;
+      this.right = options.right;
+      this.content = options.content;
+      this.dragThresholdX = options.dragThresholdX || 10;
+        
+      this._rightShowing = false;
+      this._leftShowing = false;
+      this._isDragging = false;
+
+      if(this.content) {
+        this.content.onDrag = function(e) {
+          self._handleDrag(e);
+        };
+
+        this.content.onEndDrag =function(e) {
+          self._endDrag(e);
+        };
+      }
+    },
+    /**
+     * Set the content view controller if not passed in the constructor options.
+     * 
+     * @param {object} content
+     */
+    setContent: function(content) {
+      var self = this;
+
+      this.content = content;
+
+      this.content.onDrag = function(e) {
+        self._handleDrag(e);
+      };
+
+      this.content.endDrag = function(e) {
+        self._endDrag(e);
+      };
+    },
+
+    /**
+     * Toggle the left menu to open 100%
+     */
+    toggleLeft: function() {
+      this.content.enableAnimation();
+      var openAmount = this.getOpenAmount();
+      if(openAmount > 0) {
+        this.openPercentage(0);
+      } else {
+        this.openPercentage(100);
+      }
+    },
+
+    /**
+     * Toggle the right menu to open 100%
+     */
+    toggleRight: function() {
+      this.content.enableAnimation();
+      var openAmount = this.getOpenAmount();
+      if(openAmount &lt; 0) {
+        this.openPercentage(0);
+      } else {
+        this.openPercentage(-100);
+      }
+    },
+
+    /**
+     * Close all menus.
+     */
+    close: function() {
+      this.openPercentage(0);
+    },
+
+    /**
+     * @return {float} The amount the side menu is open, either positive or negative for left (positive), or right (negative)
+     */
+    getOpenAmount: function() {
+      return this.content.getTranslateX() || 0;
+    },
+
+    /**
+     * @return {float} The ratio of open amount over menu width. For example, a
+     * menu of width 100 open 50 pixels would be open 50% or a ratio of 0.5. Value is negative
+     * for right menu.
+     */
+    getOpenRatio: function() {
+      var amount = this.getOpenAmount();
+      if(amount >= 0) {
+        return amount / this.left.width;
+      }
+      return amount / this.right.width;
+    },
+
+    isOpen: function() {
+      return this.getOpenRatio() == 1;
+    },
+
+    /**
+     * @return {float} The percentage of open amount over menu width. For example, a
+     * menu of width 100 open 50 pixels would be open 50%. Value is negative
+     * for right menu.
+     */
+    getOpenPercentage: function() {
+      return this.getOpenRatio() * 100;
+    },
+
+    /**
+     * Open the menu with a given percentage amount.
+     * @param {float} percentage The percentage (positive or negative for left/right) to open the menu.
+     */
+    openPercentage: function(percentage) {
+      var p = percentage / 100;
+
+      if(this.left &amp;&amp; percentage >= 0) {
+        this.openAmount(this.left.width * p);
+      } else if(this.right &amp;&amp; percentage &lt; 0) {
+        var maxRight = this.right.width;
+        this.openAmount(this.right.width * p);
+      }
+    },
+
+    /**
+     * Open the menu the given pixel amount.
+     * @param {float} amount the pixel amount to open the menu. Positive value for left menu,
+     * negative value for right menu (only one menu will be visible at a time).
+     */
+    openAmount: function(amount) {
+      var maxLeft = this.left &amp;&amp; this.left.width || 0;
+      var maxRight = this.right &amp;&amp; this.right.width || 0;
+
+      // Check if we can move to that side, depending if the left/right panel is enabled
+      if((!(this.left &amp;&amp; this.left.isEnabled) &amp;&amp; amount > 0) || (!(this.right &amp;&amp; this.right.isEnabled) &amp;&amp; amount &lt; 0)) {
+        return;
+      }
+
+      if((this._leftShowing &amp;&amp; amount > maxLeft) || (this._rightShowing &amp;&amp; amount &lt; -maxRight)) {
+        return;
+      }
+      
+      this.content.setTranslateX(amount);
+
+      if(amount >= 0) {
+        this._leftShowing = true;
+        this._rightShowing = false;
+
+        // Push the z-index of the right menu down
+        this.right &amp;&amp; this.right.pushDown &amp;&amp; this.right.pushDown();
+        // Bring the z-index of the left menu up
+        this.left &amp;&amp; this.left.bringUp &amp;&amp; this.left.bringUp();
+      } else {
+        this._rightShowing = true;
+        this._leftShowing = false;
+
+        // Bring the z-index of the right menu up
+        this.right &amp;&amp; this.right.bringUp &amp;&amp; this.right.bringUp();
+        // Push the z-index of the left menu down
+        this.left &amp;&amp; this.left.pushDown &amp;&amp; this.left.pushDown();
+      }
+    },
+
+    /**
+     * Given an event object, find the final resting position of this side
+     * menu. For example, if the user "throws" the content to the right and 
+     * releases the touch, the left menu should snap open (animated, of course).
+     *
+     * @param {Event} e the gesture event to use for snapping
+     */
+    snapToRest: function(e) {
+      // We want to animate at the end of this
+      this.content.enableAnimation();
+      this._isDragging = false;
+
+      // Check how much the panel is open after the drag, and
+      // what the drag velocity is
+      var ratio = this.getOpenRatio();
+
+      if(ratio === 0)
+        return;
+
+      var velocityThreshold = 0.3;
+      var velocityX = e.gesture.velocityX;
+      var direction = e.gesture.direction;
+
+      // Less than half, going left 
+      //if(ratio > 0 &amp;&amp; ratio &lt; 0.5 &amp;&amp; direction == 'left' &amp;&amp; velocityX &lt; velocityThreshold) {
+      //this.openPercentage(0);
+      //}
+
+      // Going right, less than half, too slow (snap back)
+      if(ratio > 0 &amp;&amp; ratio &lt; 0.5 &amp;&amp; direction == 'right' &amp;&amp; velocityX &lt; velocityThreshold) {
+        this.openPercentage(0);
+      }
+
+      // Going left, more than half, too slow (snap back)
+      else if(ratio > 0.5 &amp;&amp; direction == 'left' &amp;&amp; velocityX &lt; velocityThreshold) {
+        this.openPercentage(100);
+      }
+
+      // Going left, less than half, too slow (snap back)
+      else if(ratio &lt; 0 &amp;&amp; ratio > -0.5 &amp;&amp; direction == 'left' &amp;&amp; velocityX &lt; velocityThreshold) {
+        this.openPercentage(0);
+      }
+
+      // Going right, more than half, too slow (snap back)
+      else if(ratio &lt; 0.5 &amp;&amp; direction == 'right' &amp;&amp; velocityX &lt; velocityThreshold) {
+        this.openPercentage(-100);
+      }
+      
+      // Going right, more than half, or quickly (snap open)
+      else if(direction == 'right' &amp;&amp; ratio >= 0 &amp;&amp; (ratio >= 0.5 || velocityX > velocityThreshold)) {
+        this.openPercentage(100);
+      }
+      
+      // Going left, more than half, or quickly (span open)
+      else if(direction == 'left' &amp;&amp; ratio &lt;= 0 &amp;&amp; (ratio &lt;= -0.5 || velocityX > velocityThreshold)) {
+        this.openPercentage(-100);
+      }
+      
+      // Snap back for safety
+      else {
+        this.openPercentage(0);
+      }
+    },
+
+    // End a drag with the given event
+    _endDrag: function(e) {
+      if(this._isDragging) {
+        this.snapToRest(e);
+      }
+      this._startX = null;
+      this._lastX = null;
+      this._offsetX = null;
+    },
+
+    // Handle a drag event
+    _handleDrag: function(e) {
+      // If we don't have start coords, grab and store them
+      if(!this._startX) {
+        this._startX = e.gesture.touches[0].pageX;
+        this._lastX = this._startX;
+      } else {
+        // Grab the current tap coords
+        this._lastX = e.gesture.touches[0].pageX;
+      }
+
+      // Calculate difference from the tap points
+      if(!this._isDragging &amp;&amp; Math.abs(this._lastX - this._startX) > this.dragThresholdX) {
+        // if the difference is greater than threshold, start dragging using the current
+        // point as the starting point
+        this._startX = this._lastX;
+
+        this._isDragging = true;
+        // Initialize dragging
+        this.content.disableAnimation();
+        this._offsetX = this.getOpenAmount();
+      }
+
+      if(this._isDragging) {
+        this.openAmount(this._offsetX + (this._lastX - this._startX));
+      }
+    }
+  });
+
+})(ionic);
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Index</a></h2><h3>Classes</h3><ul><li><a href="Gesture.Instance.html">Instance</a></li><li><a href="ionic.Gesture.html">Gesture</a></li><li><a href="ionic.views.Scroll.html">Scroll</a></li></ul><h3>Global</h3><ul><li><a href="global.html#__clientHeight">__clientHeight</a></li><li><a href="global.html#__clientLeft">__clientLeft</a></li><li><a href="global.html#__clientTop">__clientTop</a></li><li><a href="global.html#__clientWidth">__clientWidth</a></li><li><a href="global.html#__computeScrollMax">__computeScrollMax</a></li><li><a href="global.html#__contentHeight">__contentHeight</a></li><li><a href="global.html#__contentWidth">__contentWidth</a></li><li><a href="global.html#__createScrollbar">__createScrollbar</a></li><li><a href="global.html#__decelerationVelocityX">__decelerationVelocityX</a></li><li><a href="global.html#__decelerationVelocityY">__decelerationVelocityY</a></li><li><a href="global.html#__didDecelerationComplete">__didDecelerationComplete</a></li><li><a href="global.html#__didWaitForSize">__didWaitForSize</a></li><li><a href="global.html#__indicatorX">__indicatorX</a></li><li><a href="global.html#__isAnimating">__isAnimating</a></li><li><a href="global.html#__isDecelerating">__isDecelerating</a></li><li><a href="global.html#__isDragging">__isDragging</a></li><li><a href="global.html#__isGesturing">__isGesturing</a></li><li><a href="global.html#__isSingleTouch">__isSingleTouch</a></li><li><a href="global.html#__isTracking">__isTracking</a></li><li><a href="global.html#__lastTouchLeft">__lastTouchLeft</a></li><li><a href="global.html#__lastTouchMove">__lastTouchMove</a></li><li><a href="global.html#__lastTouchTop">__lastTouchTop</a></li><li><a href="global.html#__maxDecelerationScrollLeft">__maxDecelerationScrollLeft</a></li><li><a href="global.html#__maxDecelerationScrollTop">__maxDecelerationScrollTop</a></li><li><a href="global.html#__maxScrollLeft">__maxScrollLeft</a></li><li><a href="global.html#__maxScrollTop">__maxScrollTop</a></li><li><a href="global.html#__minDecelerationScrollLeft">__minDecelerationScrollLeft</a></li><li><a href="global.html#__minDecelerationScrollTop">__minDecelerationScrollTop</a></li><li><a href="global.html#__positions">__positions</a></li><li><a href="global.html#__publish">__publish</a></li><li><a href="global.html#__refreshActivate">__refreshActivate</a></li><li><a href="global.html#__refreshActive">__refreshActive</a></li><li><a href="global.html#__refreshDeactivate">__refreshDeactivate</a></li><li><a href="global.html#__refreshHeight">__refreshHeight</a></li><li><a href="global.html#__refreshStart">__refreshStart</a></li><li><a href="global.html#__repositionScrollbars">__repositionScrollbars</a></li><li><a href="global.html#__scrollbarFadeTimeout">__scrollbarFadeTimeout</a></li><li><a href="global.html#__scrollLeft">__scrollLeft</a></li><li><a href="global.html#__scrollTop">__scrollTop</a></li><li><a href="global.html#__snapHeight">__snapHeight</a></li><li><a href="global.html#__snapWidth">__snapWidth</a></li><li><a href="global.html#__startDeceleration">__startDeceleration</a></li><li><a href="global.html#__stepThroughDeceleration">__stepThroughDeceleration</a></li><li><a href="global.html#__transformProperty">__transformProperty</a></li><li><a href="global.html#__waitForSize">__waitForSize</a></li><li><a href="global.html#__zoomLevel">__zoomLevel</a></li><li><a href="global.html#_handleDrag">_handleDrag</a></li><li><a href="global.html#_handleTouch">_handleTouch</a></li><li><a href="global.html#activatePullToRefresh">activatePullToRefresh</a></li><li><a href="global.html#align">align</a></li><li><a href="global.html#close">close</a></li><li><a href="global.html#didScroll">didScroll</a></li><li><a href="global.html#doMouseZoom">doMouseZoom</a></li><li><a href="global.html#doTouchEnd">doTouchEnd</a></li><li><a href="global.html#doTouchMove">doTouchMove</a></li><li><a href="global.html#doTouchStart">doTouchStart</a></li><li><a href="global.html#finishPullToRefresh">finishPullToRefresh</a></li><li><a href="global.html#fromTemplate">fromTemplate</a></li><li><a href="global.html#getControllers">getControllers</a></li><li><a href="global.html#getOpenAmount">getOpenAmount</a></li><li><a href="global.html#getOpenPercentage">getOpenPercentage</a></li><li><a href="global.html#getOpenRatio">getOpenRatio</a></li><li><a href="global.html#getScrollMax">getScrollMax</a></li><li><a href="global.html#getTopController">getTopController</a></li><li><a href="global.html#getValues">getValues</a></li><li><a href="global.html#hideNavBar">hideNavBar</a></li><li><a href="global.html#offHardwareBackButton">offHardwareBackButton</a></li><li><a href="global.html#onHardwareBackButton">onHardwareBackButton</a></li><li><a href="global.html#openAmount">openAmount</a></li><li><a href="global.html#openPercentage">openPercentage</a></li><li><a href="global.html#pop">pop</a></li><li><a href="global.html#preventDefault">preventDefault</a></li><li><a href="global.html#push">push</a></li><li><a href="global.html#ready">ready</a></li><li><a href="global.html#register">register</a></li><li><a href="global.html#scrollBy">scrollBy</a></li><li><a href="global.html#scrollTo">scrollTo</a></li><li><a href="global.html#scrollTop">scrollTop</a></li><li><a href="global.html#setContent">setContent</a></li><li><a href="global.html#setDimensions">setDimensions</a></li><li><a href="global.html#setPosition">setPosition</a></li><li><a href="global.html#setSnapSize">setSnapSize</a></li><li><a href="global.html#show">show</a></li><li><a href="global.html#showNavBar">showNavBar</a></li><li><a href="global.html#snapToRest">snapToRest</a></li><li><a href="global.html#stopDetect">stopDetect</a></li><li><a href="global.html#stopPropagation">stopPropagation</a></li><li><a href="global.html#stopRefreshing">stopRefreshing</a></li><li><a href="global.html#toggleLeft">toggleLeft</a></li><li><a href="global.html#toggleRight">toggleRight</a></li><li><a href="global.html#triggerPullToRefresh">triggerPullToRefresh</a></li><li><a href="global.html#update">update</a></li><li><a href="global.html#zoomBy">zoomBy</a></li><li><a href="global.html#zoomTo">zoomTo</a></li></ul>
+</nav>
+
+<br clear="both">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.3.0-alpha3</a> on Wed Jan 22 2014 14:46:04 GMT-0600 (CST)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

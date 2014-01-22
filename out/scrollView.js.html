@@ -1,4 +1,31 @@
-/*
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: views/scrollView.js</title>
+    
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+    
+    <h1 class="page-title">Source: views/scrollView.js</h1>
+    
+    
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/*
  * Scroller
  * http://github.com/zynga/scroller
  *
@@ -53,7 +80,7 @@
 			var requestFrame = global.requestAnimationFrame || global.webkitRequestAnimationFrame || global.mozRequestAnimationFrame || global.oRequestAnimationFrame;
 			var isNative = !!requestFrame;
 
-			if (requestFrame && !/requestAnimationFrame\(\)\s*\{\s*\[native code\]\s*\}/i.test(requestFrame.toString())) {
+			if (requestFrame &amp;&amp; !/requestAnimationFrame\(\)\s*\{\s*\[native code\]\s*\}/i.test(requestFrame.toString())) {
 				isNative = false;
 			}
 
@@ -186,10 +213,10 @@
 				var now = time();
 
 				// Verification is executed before next animation step
-				if (!running[id] || (verifyCallback && !verifyCallback(id))) {
+				if (!running[id] || (verifyCallback &amp;&amp; !verifyCallback(id))) {
 
 					running[id] = null;
-					completedCallback && completedCallback(desiredFrames - (dropCounter / ((now - start) / millisecondsPerSecond)), id, false);
+					completedCallback &amp;&amp; completedCallback(desiredFrames - (dropCounter / ((now - start) / millisecondsPerSecond)), id, false);
 					return;
 
 				}
@@ -199,7 +226,7 @@
 				if (render) {
 
 					var droppedFrames = Math.round((now - lastFrame) / (millisecondsPerSecond / desiredFrames)) - 1;
-					for (var j = 0; j < Math.min(droppedFrames, 4); j++) {
+					for (var j = 0; j &lt; Math.min(droppedFrames, 4); j++) {
 						step(true);
 						dropCounter++;
 					}
@@ -216,9 +243,9 @@
 
 				// Execute step callback, then...
 				var value = easingMethod ? easingMethod(percent) : percent;
-				if ((stepCallback(value, now, render) === false || percent === 1) && render) {
+				if ((stepCallback(value, now, render) === false || percent === 1) &amp;&amp; render) {
 					running[id] = null;
-					completedCallback && completedCallback(desiredFrames - (dropCounter / ((now - start) / millisecondsPerSecond)), id, percent === 1 || duration == null);
+					completedCallback &amp;&amp; completedCallback(desiredFrames - (dropCounter / ((now - start) / millisecondsPerSecond)), id, percent === 1 || duration == null);
 				} else if (render) {
 					lastFrame = now;
 					core.effect.Animate.requestAnimationFrame(step, root);
@@ -270,7 +297,7 @@ var Scroller;
 	 * @param pos {Number} position between 0 (start of effect) and 1 (end of effect)
 	**/
 	var easeInOutCubic = function(pos) {
-		if ((pos /= 0.5) < 1) {
+		if ((pos /= 0.5) &lt; 1) {
 			return 0.5 * Math.pow(pos, 3);
 		}
 
@@ -393,10 +420,6 @@ ionic.views.Scroll = ionic.views.View.inherit({
 		this.__callback = this.getRenderFn();
     this.__initEventHandlers();
     this.__createScrollbars();
-
-  },
-
-  run: function() {
     this.resize();
 
     // Fade them out
@@ -750,7 +773,7 @@ ionic.views.Scroll = ionic.views.View.inherit({
       // The the difference between the last content X position, and our overscrolled one
       widthDiff = self.__scrollLeft - (self.__maxScrollLeft - xstop);
 
-      if(self.__scrollLeft < 0) {
+      if(self.__scrollLeft &lt; 0) {
 
         widthScale = Math.max(self.__indicatorX.minScale,
             (self.__indicatorX.size - Math.abs(self.__scrollLeft)) / self.__indicatorX.size);
@@ -791,7 +814,7 @@ ionic.views.Scroll = ionic.views.View.inherit({
 
       heightDiff = self.__scrollTop - (self.__maxScrollTop - ystop);
 
-      if(self.__scrollTop < 0) {
+      if(self.__scrollTop &lt; 0) {
 
         heightScale = Math.max(self.__indicatorY.minScale, (self.__indicatorY.size - Math.abs(self.__scrollTop)) / self.__indicatorY.size);
 
@@ -1141,14 +1164,14 @@ ionic.views.Scroll = ionic.views.View.inherit({
     // Limit x-axis
     if (left > self.__maxScrollLeft) {
       left = self.__maxScrollLeft;
-    } else if (left < 0) {
+    } else if (left &lt; 0) {
       left = 0;
     }
 
     // Limit y-axis
     if (top > self.__maxScrollTop) {
       top = self.__maxScrollTop;
-    } else if (top < 0) {
+    } else if (top &lt; 0) {
       top = 0;
     }
 
@@ -1178,8 +1201,8 @@ ionic.views.Scroll = ionic.views.View.inherit({
   /**
    * Scrolls to the given position. Respect limitations and snapping automatically.
    *
-   * @param left {Number} Horizontal scroll position, keeps current if value is <code>null</code>
-   * @param top {Number} Vertical scroll position, keeps current if value is <code>null</code>
+   * @param left {Number} Horizontal scroll position, keeps current if value is &lt;code>null&lt;/code>
+   * @param top {Number} Vertical scroll position, keeps current if value is &lt;code>null&lt;/code>
    * @param animate {Boolean} Whether the scrolling should happen using an animation
    * @param zoom {Number} Zoom level to go to
    */
@@ -1194,7 +1217,7 @@ ionic.views.Scroll = ionic.views.View.inherit({
     }
 
     // Correct coordinates based on new zoom level
-    if (zoom != null && zoom !== self.__zoomLevel) {
+    if (zoom != null &amp;&amp; zoom !== self.__zoomLevel) {
 
       if (!self.options.zooming) {
         throw new Error("Zooming is not enabled!");
@@ -1247,7 +1270,7 @@ ionic.views.Scroll = ionic.views.View.inherit({
 
     // Don't animate when no change detected, still call publish to make sure
     // that rendered position is really in-sync with internal data
-    if (left === self.__scrollLeft && top === self.__scrollTop) {
+    if (left === self.__scrollLeft &amp;&amp; top === self.__scrollTop) {
       animate = false;
     }
 
@@ -1364,8 +1387,8 @@ ionic.views.Scroll = ionic.views.View.inherit({
     self.__lastScale = 1;
 
     // Reset locking flags
-    self.__enableScrollX = !isSingleTouch && self.options.scrollingX;
-    self.__enableScrollY = !isSingleTouch && self.options.scrollingY;
+    self.__enableScrollX = !isSingleTouch &amp;&amp; self.options.scrollingX;
+    self.__enableScrollY = !isSingleTouch &amp;&amp; self.options.scrollingY;
 
     // Reset tracking flag
     self.__isTracking = true;
@@ -1436,7 +1459,7 @@ ionic.views.Scroll = ionic.views.View.inherit({
       var level = self.__zoomLevel;
 
       // Work with scaling
-      if (scale != null && self.options.zooming) {
+      if (scale != null &amp;&amp; self.options.zooming) {
 
         var oldLevel = level;
 
@@ -1468,7 +1491,7 @@ ionic.views.Scroll = ionic.views.View.inherit({
         scrollLeft -= moveX * this.options.speedMultiplier;
         var maxScrollLeft = self.__maxScrollLeft;
 
-        if (scrollLeft > maxScrollLeft || scrollLeft < 0) {
+        if (scrollLeft > maxScrollLeft || scrollLeft &lt; 0) {
 
           // Slow down on the edges
           if (self.options.bouncing) {
@@ -1493,7 +1516,7 @@ ionic.views.Scroll = ionic.views.View.inherit({
         scrollTop -= moveY * this.options.speedMultiplier;
         var maxScrollTop = self.__maxScrollTop;
 
-        if (scrollTop > maxScrollTop || scrollTop < 0) {
+        if (scrollTop > maxScrollTop || scrollTop &lt; 0) {
 
           // Slow down on the edges
           if (self.options.bouncing) {
@@ -1501,16 +1524,16 @@ ionic.views.Scroll = ionic.views.View.inherit({
             scrollTop += (moveY / 2 * this.options.speedMultiplier);
 
             // Support pull-to-refresh (only when only y is scrollable)
-            if (!self.__enableScrollX && self.__refreshHeight != null) {
+            if (!self.__enableScrollX &amp;&amp; self.__refreshHeight != null) {
 
-              if (!self.__refreshActive && scrollTop <= -self.__refreshHeight) {
+              if (!self.__refreshActive &amp;&amp; scrollTop &lt;= -self.__refreshHeight) {
 
                 self.__refreshActive = true;
                 if (self.__refreshActivate) {
                   self.__refreshActivate();
                 }
 
-              } else if (self.__refreshActive && scrollTop > -self.__refreshHeight) {
+              } else if (self.__refreshActive &amp;&amp; scrollTop > -self.__refreshHeight) {
 
                 self.__refreshActive = false;
                 if (self.__refreshDeactivate) {
@@ -1552,12 +1575,12 @@ ionic.views.Scroll = ionic.views.View.inherit({
       var distanceX = Math.abs(currentTouchLeft - self.__initialTouchLeft);
       var distanceY = Math.abs(currentTouchTop - self.__initialTouchTop);
 
-      self.__enableScrollX = self.options.scrollingX && distanceX >= minimumTrackingForScroll;
-      self.__enableScrollY = self.options.scrollingY && distanceY >= minimumTrackingForScroll;
+      self.__enableScrollX = self.options.scrollingX &amp;&amp; distanceX >= minimumTrackingForScroll;
+      self.__enableScrollY = self.options.scrollingY &amp;&amp; distanceY >= minimumTrackingForScroll;
 
       positions.push(self.__scrollLeft, self.__scrollTop, timeStamp);
 
-      self.__isDragging = (self.__enableScrollX || self.__enableScrollY) && (distanceX >= minimumTrackingForDrag || distanceY >= minimumTrackingForDrag);
+      self.__isDragging = (self.__enableScrollX || self.__enableScrollY) &amp;&amp; (distanceX >= minimumTrackingForDrag || distanceY >= minimumTrackingForDrag);
       if (self.__isDragging) {
         self.__interruptedAnimation = false;
       }
@@ -1605,7 +1628,7 @@ ionic.views.Scroll = ionic.views.View.inherit({
 
       // Start deceleration
       // Verify that the last move detected was in some relevant time frame
-      if (self.__isSingleTouch && self.options.animating && (timeStamp - self.__lastTouchMove) <= 100) {
+      if (self.__isSingleTouch &amp;&amp; self.options.animating &amp;&amp; (timeStamp - self.__lastTouchMove) &lt;= 100) {
 
         // Then figure out what the scroll position was about 100ms ago
         var positions = self.__positions;
@@ -1613,7 +1636,7 @@ ionic.views.Scroll = ionic.views.View.inherit({
         var startPos = endPos;
 
         // Move pointer to position measured 100ms ago
-        for (var i = endPos; i > 0 && positions[i] > (self.__lastTouchMove - 100); i -= 3) {
+        for (var i = endPos; i > 0 &amp;&amp; positions[i] > (self.__lastTouchMove - 100); i -= 3) {
           startPos = i;
         }
 
@@ -1656,7 +1679,7 @@ ionic.views.Scroll = ionic.views.View.inherit({
     // have modified the scroll positions or even showed the scrollbars though.
     if (!self.__isDecelerating) {
 
-      if (self.__refreshActive && self.__refreshStart) {
+      if (self.__refreshActive &amp;&amp; self.__refreshStart) {
 
         // Use publish instead of scrollTo to allow scrolling to out of boundary position
         // We don't need to normalize scrollLeft, zoomLevel, etc. here because we only y-scrolling when pull-to-refresh is enabled
@@ -1716,7 +1739,7 @@ ionic.views.Scroll = ionic.views.View.inherit({
       self.__isAnimating = false;
     }
 
-    if (animate && self.options.animating) {
+    if (animate &amp;&amp; self.options.animating) {
 
       // Keep scheduled positions for scrollBy/zoomBy functionality
       self.__scheduledLeft = left;
@@ -1800,7 +1823,7 @@ ionic.views.Scroll = ionic.views.View.inherit({
     self.__maxScrollLeft = Math.max((self.__contentWidth * zoomLevel) - self.__clientWidth, 0);
     self.__maxScrollTop = Math.max((self.__contentHeight * zoomLevel) - self.__clientHeight, 0);
 
-    if(!self.__didWaitForSize && self.__maxScrollLeft == 0 && self.__maxScrollTop == 0) {
+    if(!self.__didWaitForSize &amp;&amp; self.__maxScrollLeft == 0 &amp;&amp; self.__maxScrollTop == 0) {
       self.__didWaitForSize = true;
       self.__waitForSize();
     }
@@ -1819,7 +1842,7 @@ ionic.views.Scroll = ionic.views.View.inherit({
     var sizer = function() {
       self.resize();
         
-      if((self.options.scrollingX && self.__maxScrollLeft == 0) || (self.options.scrollingY && self.__maxScrollTop == 0)) {
+      if((self.options.scrollingX &amp;&amp; self.__maxScrollLeft == 0) || (self.options.scrollingY &amp;&amp; self.__maxScrollTop == 0)) {
         //self.__sizerTimeout = setTimeout(sizer, 1000);
       }
     };
@@ -1989,13 +2012,13 @@ ionic.views.Scroll = ionic.views.View.inherit({
       var penetrationAcceleration = self.options.penetrationAcceleration; 
 
       // Check limits
-      if (scrollLeft < self.__minDecelerationScrollLeft) {
+      if (scrollLeft &lt; self.__minDecelerationScrollLeft) {
         scrollOutsideX = self.__minDecelerationScrollLeft - scrollLeft;
       } else if (scrollLeft > self.__maxDecelerationScrollLeft) {
         scrollOutsideX = self.__maxDecelerationScrollLeft - scrollLeft;
       }
 
-      if (scrollTop < self.__minDecelerationScrollTop) {
+      if (scrollTop &lt; self.__minDecelerationScrollTop) {
         scrollOutsideY = self.__minDecelerationScrollTop - scrollTop;
       } else if (scrollTop > self.__maxDecelerationScrollTop) {
         scrollOutsideY = self.__maxDecelerationScrollTop - scrollTop;
@@ -2003,7 +2026,7 @@ ionic.views.Scroll = ionic.views.View.inherit({
 
       // Slow down until slow enough, then flip back to snap position
       if (scrollOutsideX !== 0) {
-        if (scrollOutsideX * self.__decelerationVelocityX <= 0) {
+        if (scrollOutsideX * self.__decelerationVelocityX &lt;= 0) {
           self.__decelerationVelocityX += scrollOutsideX * penetrationDeceleration;
         } else {
           self.__decelerationVelocityX = scrollOutsideX * penetrationAcceleration;
@@ -2011,7 +2034,7 @@ ionic.views.Scroll = ionic.views.View.inherit({
       }
 
       if (scrollOutsideY !== 0) {
-        if (scrollOutsideY * self.__decelerationVelocityY <= 0) {
+        if (scrollOutsideY * self.__decelerationVelocityY &lt;= 0) {
           self.__decelerationVelocityY += scrollOutsideY * penetrationDeceleration;
         } else {
           self.__decelerationVelocityY = scrollOutsideY * penetrationAcceleration;
@@ -2022,3 +2045,26 @@ ionic.views.Scroll = ionic.views.View.inherit({
 });
 
 })(ionic);
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Index</a></h2><h3>Classes</h3><ul><li><a href="Gesture.Instance.html">Instance</a></li><li><a href="ionic.Gesture.html">Gesture</a></li><li><a href="ionic.views.Scroll.html">Scroll</a></li></ul><h3>Global</h3><ul><li><a href="global.html#__clientHeight">__clientHeight</a></li><li><a href="global.html#__clientLeft">__clientLeft</a></li><li><a href="global.html#__clientTop">__clientTop</a></li><li><a href="global.html#__clientWidth">__clientWidth</a></li><li><a href="global.html#__computeScrollMax">__computeScrollMax</a></li><li><a href="global.html#__contentHeight">__contentHeight</a></li><li><a href="global.html#__contentWidth">__contentWidth</a></li><li><a href="global.html#__createScrollbar">__createScrollbar</a></li><li><a href="global.html#__decelerationVelocityX">__decelerationVelocityX</a></li><li><a href="global.html#__decelerationVelocityY">__decelerationVelocityY</a></li><li><a href="global.html#__didDecelerationComplete">__didDecelerationComplete</a></li><li><a href="global.html#__didWaitForSize">__didWaitForSize</a></li><li><a href="global.html#__indicatorX">__indicatorX</a></li><li><a href="global.html#__isAnimating">__isAnimating</a></li><li><a href="global.html#__isDecelerating">__isDecelerating</a></li><li><a href="global.html#__isDragging">__isDragging</a></li><li><a href="global.html#__isGesturing">__isGesturing</a></li><li><a href="global.html#__isSingleTouch">__isSingleTouch</a></li><li><a href="global.html#__isTracking">__isTracking</a></li><li><a href="global.html#__lastTouchLeft">__lastTouchLeft</a></li><li><a href="global.html#__lastTouchMove">__lastTouchMove</a></li><li><a href="global.html#__lastTouchTop">__lastTouchTop</a></li><li><a href="global.html#__maxDecelerationScrollLeft">__maxDecelerationScrollLeft</a></li><li><a href="global.html#__maxDecelerationScrollTop">__maxDecelerationScrollTop</a></li><li><a href="global.html#__maxScrollLeft">__maxScrollLeft</a></li><li><a href="global.html#__maxScrollTop">__maxScrollTop</a></li><li><a href="global.html#__minDecelerationScrollLeft">__minDecelerationScrollLeft</a></li><li><a href="global.html#__minDecelerationScrollTop">__minDecelerationScrollTop</a></li><li><a href="global.html#__positions">__positions</a></li><li><a href="global.html#__publish">__publish</a></li><li><a href="global.html#__refreshActivate">__refreshActivate</a></li><li><a href="global.html#__refreshActive">__refreshActive</a></li><li><a href="global.html#__refreshDeactivate">__refreshDeactivate</a></li><li><a href="global.html#__refreshHeight">__refreshHeight</a></li><li><a href="global.html#__refreshStart">__refreshStart</a></li><li><a href="global.html#__repositionScrollbars">__repositionScrollbars</a></li><li><a href="global.html#__scrollbarFadeTimeout">__scrollbarFadeTimeout</a></li><li><a href="global.html#__scrollLeft">__scrollLeft</a></li><li><a href="global.html#__scrollTop">__scrollTop</a></li><li><a href="global.html#__snapHeight">__snapHeight</a></li><li><a href="global.html#__snapWidth">__snapWidth</a></li><li><a href="global.html#__startDeceleration">__startDeceleration</a></li><li><a href="global.html#__stepThroughDeceleration">__stepThroughDeceleration</a></li><li><a href="global.html#__transformProperty">__transformProperty</a></li><li><a href="global.html#__waitForSize">__waitForSize</a></li><li><a href="global.html#__zoomLevel">__zoomLevel</a></li><li><a href="global.html#_handleDrag">_handleDrag</a></li><li><a href="global.html#_handleTouch">_handleTouch</a></li><li><a href="global.html#activatePullToRefresh">activatePullToRefresh</a></li><li><a href="global.html#align">align</a></li><li><a href="global.html#close">close</a></li><li><a href="global.html#didScroll">didScroll</a></li><li><a href="global.html#doMouseZoom">doMouseZoom</a></li><li><a href="global.html#doTouchEnd">doTouchEnd</a></li><li><a href="global.html#doTouchMove">doTouchMove</a></li><li><a href="global.html#doTouchStart">doTouchStart</a></li><li><a href="global.html#finishPullToRefresh">finishPullToRefresh</a></li><li><a href="global.html#fromTemplate">fromTemplate</a></li><li><a href="global.html#getControllers">getControllers</a></li><li><a href="global.html#getOpenAmount">getOpenAmount</a></li><li><a href="global.html#getOpenPercentage">getOpenPercentage</a></li><li><a href="global.html#getOpenRatio">getOpenRatio</a></li><li><a href="global.html#getScrollMax">getScrollMax</a></li><li><a href="global.html#getTopController">getTopController</a></li><li><a href="global.html#getValues">getValues</a></li><li><a href="global.html#hideNavBar">hideNavBar</a></li><li><a href="global.html#offHardwareBackButton">offHardwareBackButton</a></li><li><a href="global.html#onHardwareBackButton">onHardwareBackButton</a></li><li><a href="global.html#openAmount">openAmount</a></li><li><a href="global.html#openPercentage">openPercentage</a></li><li><a href="global.html#pop">pop</a></li><li><a href="global.html#preventDefault">preventDefault</a></li><li><a href="global.html#push">push</a></li><li><a href="global.html#ready">ready</a></li><li><a href="global.html#register">register</a></li><li><a href="global.html#scrollBy">scrollBy</a></li><li><a href="global.html#scrollTo">scrollTo</a></li><li><a href="global.html#scrollTop">scrollTop</a></li><li><a href="global.html#setContent">setContent</a></li><li><a href="global.html#setDimensions">setDimensions</a></li><li><a href="global.html#setPosition">setPosition</a></li><li><a href="global.html#setSnapSize">setSnapSize</a></li><li><a href="global.html#show">show</a></li><li><a href="global.html#showNavBar">showNavBar</a></li><li><a href="global.html#snapToRest">snapToRest</a></li><li><a href="global.html#stopDetect">stopDetect</a></li><li><a href="global.html#stopPropagation">stopPropagation</a></li><li><a href="global.html#stopRefreshing">stopRefreshing</a></li><li><a href="global.html#toggleLeft">toggleLeft</a></li><li><a href="global.html#toggleRight">toggleRight</a></li><li><a href="global.html#triggerPullToRefresh">triggerPullToRefresh</a></li><li><a href="global.html#update">update</a></li><li><a href="global.html#zoomBy">zoomBy</a></li><li><a href="global.html#zoomTo">zoomTo</a></li></ul>
+</nav>
+
+<br clear="both">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.3.0-alpha3</a> on Wed Jan 22 2014 14:46:04 GMT-0600 (CST)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

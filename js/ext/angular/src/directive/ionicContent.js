@@ -51,7 +51,10 @@ angular.module('ionic.ui.content', ['ionic.ui.service'])
       if(attr.hasTabs == "true") { element.addClass('has-tabs'); }
       if(attr.padding == "true") { element.find('div').addClass('padding'); }
 
+      console.log('COMPILE');
+
       return function link($scope, $element, $attr) {
+        console.log('LINK');
         var clone, sc, sv,
           c = angular.element($element.children()[0]);
 
@@ -78,48 +81,51 @@ angular.module('ionic.ui.content', ['ionic.ui.service'])
           }
 
           // Otherwise, supercharge this baby!
-          $timeout(function() {
-            var hasBouncing = $scope.$eval($scope.hasBouncing);
-            var enableBouncing = (!$ionicPlatform.is('Android') && hasBouncing !== false) || hasBouncing === true;
-            // No bouncing by default for Android users, lest they take up pitchforks
-            // to our bouncing goodness
-            sv = new ionic.views.Scroll({
-              el: $element[0],
-              bouncing: enableBouncing,
-              startX: $scope.$eval($scope.startX) || 0,
-              startY: $scope.$eval($scope.startY) || 0,
-              scrollbarX: $scope.$eval($scope.scrollbarX) !== false,
-              scrollbarY: $scope.$eval($scope.scrollbarY) !== false,
-              scrollingX: $scope.$eval($scope.hasScrollX) === true,
-              scrollingY: $scope.$eval($scope.hasScrollY) !== false,
-              scrollEventInterval: parseInt($scope.scrollEventInterval, 10) || 20,
-              scrollingComplete: function() {
-                $scope.onScrollComplete({
-                  scrollTop: this.__scrollTop,
-                  scrollLeft: this.__scrollLeft
-                });
-              }
-            });
-
-            // Activate pull-to-refresh
-            if(refresher) {
-              sv.activatePullToRefresh(50, function() {
-                refresher.classList.add('active');
-              }, function() {
-                refresher.classList.remove('refreshing');
-                refresher.classList.remove('active');
-              }, function() {
-                refresher.classList.add('refreshing');
-                $scope.onRefresh();
-                $scope.$parent.$broadcast('scroll.onRefresh');
+          var hasBouncing = $scope.$eval($scope.hasBouncing);
+          var enableBouncing = (!$ionicPlatform.is('Android') && hasBouncing !== false) || hasBouncing === true;
+          // No bouncing by default for Android users, lest they take up pitchforks
+          // to our bouncing goodness
+          sv = new ionic.views.Scroll({
+            el: $element[0],
+            bouncing: enableBouncing,
+            startX: $scope.$eval($scope.startX) || 0,
+            startY: $scope.$eval($scope.startY) || 0,
+            scrollbarX: $scope.$eval($scope.scrollbarX) !== false,
+            scrollbarY: $scope.$eval($scope.scrollbarY) !== false,
+            scrollingX: $scope.$eval($scope.hasScrollX) === true,
+            scrollingY: $scope.$eval($scope.hasScrollY) !== false,
+            scrollEventInterval: parseInt($scope.scrollEventInterval, 10) || 20,
+            scrollingComplete: function() {
+              $scope.onScrollComplete({
+                scrollTop: this.__scrollTop,
+                scrollLeft: this.__scrollLeft
               });
             }
+          });
 
-            // Register for scroll delegate event handling
-            $ionicScrollDelegate.register($scope, $element);
+          // Activate pull-to-refresh
+          if(refresher) {
+            sv.activatePullToRefresh(50, function() {
+              refresher.classList.add('active');
+            }, function() {
+              refresher.classList.remove('refreshing');
+              refresher.classList.remove('active');
+            }, function() {
+              refresher.classList.add('refreshing');
+              $scope.onRefresh();
+              $scope.$parent.$broadcast('scroll.onRefresh');
+            });
+          }
 
-            // Let child scopes access this 
-            $scope.$parent.scrollView = sv;
+          // Register for scroll delegate event handling
+          $ionicScrollDelegate.register($scope, $element);
+
+          // Let child scopes access this 
+          $scope.$parent.scrollView = sv;
+
+          $timeout(function() {
+            // Give child containers a chance to build and size themselves
+            sv.run();
           });
 
           // Check if this supports infinite scrolling and listen for scroll events

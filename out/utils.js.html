@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: utils/utils.js</title>
+    
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+    
+    <h1 class="page-title">Source: utils/utils.js</h1>
+    
+    
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>(function(ionic) {
+  
+  /**
+   * Various utilities used throughout Ionic
+   *
+   * Some of these are adopted from underscore.js and backbone.js, both also MIT licensed.
+   */
+  ionic.Utils = {
+
+    arrayMove: function (arr, old_index, new_index) {
+      if (new_index >= arr.length) {
+        var k = new_index - arr.length;
+        while ((k--) + 1) {
+          arr.push(undefined);
+        }
+      }
+      arr.splice(new_index, 0, arr.splice(old_index, 1)[0]);
+      return arr;
+    },
+
+    /**
+     * Return a function that will be called with the given context
+     */
+    proxy: function(func, context) {
+      var args = Array.prototype.slice.call(arguments, 2);
+      return function() {
+        return func.apply(context, args.concat(Array.prototype.slice.call(arguments)));
+      };
+    },
+
+    /**
+     * Only call a function once in the given interval.
+     * 
+     * @param func {Function} the function to call
+     * @param wait {int} how long to wait before/after to allow function calls
+     * @param immediate {boolean} whether to call immediately or after the wait interval
+     */
+     debounce: function(func, wait, immediate) {
+      var timeout, args, context, timestamp, result;
+      return function() {
+        context = this;
+        args = arguments;
+        timestamp = new Date();
+        var later = function() {
+          var last = (new Date()) - timestamp;
+          if (last &lt; wait) {
+            timeout = setTimeout(later, wait - last);
+          } else {
+            timeout = null;
+            if (!immediate) result = func.apply(context, args);
+          }
+        };
+        var callNow = immediate &amp;&amp; !timeout;
+        if (!timeout) {
+          timeout = setTimeout(later, wait);
+        }
+        if (callNow) result = func.apply(context, args);
+        return result;
+      };
+    },
+
+    /**
+     * Throttle the given fun, only allowing it to be
+     * called at most every `wait` ms.
+     */
+    throttle: function(func, wait, options) {
+      var context, args, result;
+      var timeout = null;
+      var previous = 0;
+      options || (options = {});
+      var later = function() {
+        previous = options.leading === false ? 0 : Date.now();
+        timeout = null;
+        result = func.apply(context, args);
+      };
+      return function() {
+        var now = Date.now();
+        if (!previous &amp;&amp; options.leading === false) previous = now;
+        var remaining = wait - (now - previous);
+        context = this;
+        args = arguments;
+        if (remaining &lt;= 0) {
+          clearTimeout(timeout);
+          timeout = null;
+          previous = now;
+          result = func.apply(context, args);
+        } else if (!timeout &amp;&amp; options.trailing !== false) {
+          timeout = setTimeout(later, remaining);
+        }
+        return result;
+      };
+    },
+     // Borrowed from Backbone.js's extend
+     // Helper function to correctly set up the prototype chain, for subclasses.
+     // Similar to `goog.inherits`, but uses a hash of prototype properties and
+     // class properties to be extended.
+    inherit: function(protoProps, staticProps) {
+      var parent = this;
+      var child;
+
+      // The constructor function for the new subclass is either defined by you
+      // (the "constructor" property in your `extend` definition), or defaulted
+      // by us to simply call the parent's constructor.
+      if (protoProps &amp;&amp; protoProps.hasOwnProperty('constructor')) {
+        child = protoProps.constructor;
+      } else {
+        child = function(){ return parent.apply(this, arguments); };
+      }
+
+      // Add static properties to the constructor function, if supplied.
+      ionic.extend(child, parent, staticProps);
+
+      // Set the prototype chain to inherit from `parent`, without calling
+      // `parent`'s constructor function.
+      var Surrogate = function(){ this.constructor = child; };
+      Surrogate.prototype = parent.prototype;
+      child.prototype = new Surrogate;
+
+      // Add prototype properties (instance properties) to the subclass,
+      // if supplied.
+      if (protoProps) ionic.extend(child.prototype, protoProps);
+
+      // Set a convenience property in case the parent's prototype is needed
+      // later.
+      child.__super__ = parent.prototype;
+
+      return child;
+    },
+
+    // Extend adapted from Underscore.js
+    extend: function(obj) {
+       var args = Array.prototype.slice.call(arguments, 1);
+       for(var i = 0; i &lt; args.length; i++) {
+         var source = args[i];
+         if (source) {
+           for (var prop in source) {
+             obj[prop] = source[prop];
+           }
+         }
+       }
+       return obj;
+    }
+  };
+
+  // Bind a few of the most useful functions to the ionic scope
+  ionic.inherit = ionic.Utils.inherit;
+  ionic.extend = ionic.Utils.extend;
+  ionic.throttle = ionic.Utils.throttle;
+  ionic.proxy = ionic.Utils.proxy;
+  ionic.debounce = ionic.Utils.debounce;
+
+})(window.ionic);
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Index</a></h2><h3>Classes</h3><ul><li><a href="Gesture.Instance.html">Instance</a></li><li><a href="ionic.Gesture.html">Gesture</a></li><li><a href="ionic.views.Scroll.html">Scroll</a></li></ul><h3>Global</h3><ul><li><a href="global.html#__clientHeight">__clientHeight</a></li><li><a href="global.html#__clientLeft">__clientLeft</a></li><li><a href="global.html#__clientTop">__clientTop</a></li><li><a href="global.html#__clientWidth">__clientWidth</a></li><li><a href="global.html#__computeScrollMax">__computeScrollMax</a></li><li><a href="global.html#__contentHeight">__contentHeight</a></li><li><a href="global.html#__contentWidth">__contentWidth</a></li><li><a href="global.html#__createScrollbar">__createScrollbar</a></li><li><a href="global.html#__decelerationVelocityX">__decelerationVelocityX</a></li><li><a href="global.html#__decelerationVelocityY">__decelerationVelocityY</a></li><li><a href="global.html#__didDecelerationComplete">__didDecelerationComplete</a></li><li><a href="global.html#__didWaitForSize">__didWaitForSize</a></li><li><a href="global.html#__indicatorX">__indicatorX</a></li><li><a href="global.html#__isAnimating">__isAnimating</a></li><li><a href="global.html#__isDecelerating">__isDecelerating</a></li><li><a href="global.html#__isDragging">__isDragging</a></li><li><a href="global.html#__isGesturing">__isGesturing</a></li><li><a href="global.html#__isSingleTouch">__isSingleTouch</a></li><li><a href="global.html#__isTracking">__isTracking</a></li><li><a href="global.html#__lastTouchLeft">__lastTouchLeft</a></li><li><a href="global.html#__lastTouchMove">__lastTouchMove</a></li><li><a href="global.html#__lastTouchTop">__lastTouchTop</a></li><li><a href="global.html#__maxDecelerationScrollLeft">__maxDecelerationScrollLeft</a></li><li><a href="global.html#__maxDecelerationScrollTop">__maxDecelerationScrollTop</a></li><li><a href="global.html#__maxScrollLeft">__maxScrollLeft</a></li><li><a href="global.html#__maxScrollTop">__maxScrollTop</a></li><li><a href="global.html#__minDecelerationScrollLeft">__minDecelerationScrollLeft</a></li><li><a href="global.html#__minDecelerationScrollTop">__minDecelerationScrollTop</a></li><li><a href="global.html#__positions">__positions</a></li><li><a href="global.html#__publish">__publish</a></li><li><a href="global.html#__refreshActivate">__refreshActivate</a></li><li><a href="global.html#__refreshActive">__refreshActive</a></li><li><a href="global.html#__refreshDeactivate">__refreshDeactivate</a></li><li><a href="global.html#__refreshHeight">__refreshHeight</a></li><li><a href="global.html#__refreshStart">__refreshStart</a></li><li><a href="global.html#__repositionScrollbars">__repositionScrollbars</a></li><li><a href="global.html#__scrollbarFadeTimeout">__scrollbarFadeTimeout</a></li><li><a href="global.html#__scrollLeft">__scrollLeft</a></li><li><a href="global.html#__scrollTop">__scrollTop</a></li><li><a href="global.html#__snapHeight">__snapHeight</a></li><li><a href="global.html#__snapWidth">__snapWidth</a></li><li><a href="global.html#__startDeceleration">__startDeceleration</a></li><li><a href="global.html#__stepThroughDeceleration">__stepThroughDeceleration</a></li><li><a href="global.html#__transformProperty">__transformProperty</a></li><li><a href="global.html#__waitForSize">__waitForSize</a></li><li><a href="global.html#__zoomLevel">__zoomLevel</a></li><li><a href="global.html#_handleDrag">_handleDrag</a></li><li><a href="global.html#_handleTouch">_handleTouch</a></li><li><a href="global.html#activatePullToRefresh">activatePullToRefresh</a></li><li><a href="global.html#align">align</a></li><li><a href="global.html#close">close</a></li><li><a href="global.html#didScroll">didScroll</a></li><li><a href="global.html#doMouseZoom">doMouseZoom</a></li><li><a href="global.html#doTouchEnd">doTouchEnd</a></li><li><a href="global.html#doTouchMove">doTouchMove</a></li><li><a href="global.html#doTouchStart">doTouchStart</a></li><li><a href="global.html#finishPullToRefresh">finishPullToRefresh</a></li><li><a href="global.html#fromTemplate">fromTemplate</a></li><li><a href="global.html#getControllers">getControllers</a></li><li><a href="global.html#getOpenAmount">getOpenAmount</a></li><li><a href="global.html#getOpenPercentage">getOpenPercentage</a></li><li><a href="global.html#getOpenRatio">getOpenRatio</a></li><li><a href="global.html#getScrollMax">getScrollMax</a></li><li><a href="global.html#getTopController">getTopController</a></li><li><a href="global.html#getValues">getValues</a></li><li><a href="global.html#hideNavBar">hideNavBar</a></li><li><a href="global.html#offHardwareBackButton">offHardwareBackButton</a></li><li><a href="global.html#onHardwareBackButton">onHardwareBackButton</a></li><li><a href="global.html#openAmount">openAmount</a></li><li><a href="global.html#openPercentage">openPercentage</a></li><li><a href="global.html#pop">pop</a></li><li><a href="global.html#preventDefault">preventDefault</a></li><li><a href="global.html#push">push</a></li><li><a href="global.html#ready">ready</a></li><li><a href="global.html#register">register</a></li><li><a href="global.html#scrollBy">scrollBy</a></li><li><a href="global.html#scrollTo">scrollTo</a></li><li><a href="global.html#scrollTop">scrollTop</a></li><li><a href="global.html#setContent">setContent</a></li><li><a href="global.html#setDimensions">setDimensions</a></li><li><a href="global.html#setPosition">setPosition</a></li><li><a href="global.html#setSnapSize">setSnapSize</a></li><li><a href="global.html#show">show</a></li><li><a href="global.html#showNavBar">showNavBar</a></li><li><a href="global.html#snapToRest">snapToRest</a></li><li><a href="global.html#stopDetect">stopDetect</a></li><li><a href="global.html#stopPropagation">stopPropagation</a></li><li><a href="global.html#stopRefreshing">stopRefreshing</a></li><li><a href="global.html#toggleLeft">toggleLeft</a></li><li><a href="global.html#toggleRight">toggleRight</a></li><li><a href="global.html#triggerPullToRefresh">triggerPullToRefresh</a></li><li><a href="global.html#update">update</a></li><li><a href="global.html#zoomBy">zoomBy</a></li><li><a href="global.html#zoomTo">zoomTo</a></li></ul>
+</nav>
+
+<br clear="both">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.3.0-alpha3</a> on Wed Jan 22 2014 14:46:04 GMT-0600 (CST)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
